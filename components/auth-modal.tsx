@@ -64,13 +64,18 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
     setError(null)
 
     try {
+      console.log("Attempting Google sign in...")
       const { error } = await signInWithGoogle()
       if (error) {
+        console.error("Google sign in error:", error)
         setError(error.message)
+      } else {
+        console.log("Google sign in initiated successfully")
       }
       // Note: For OAuth, the redirect happens automatically
       // so we don't close the modal here
     } catch (err: any) {
+      console.error("Google sign in exception:", err)
       setError(err.message || "An unexpected error occurred")
     } finally {
       setLoading(false)
