@@ -1,14 +1,13 @@
 "use client"
 
-import type React from "react"
+import React from "react"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { X, Mail, Lock, User, Github, AlertCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useAuth } from "@/lib/auth-context"
-import { supabase } from "@/lib/supabase"
 
 interface AuthModalProps {
   isOpen: boolean
@@ -19,36 +18,20 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
   const [isLogin, setIsLogin] = useState(true)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [supabaseStatus, setSupabaseStatus] = useState<string | null>(null)
   const [formData, setFormData] = useState({
     email: "",
     password: "",
     name: "",
   })
 
-  const { signIn, signUp, signInWithGoogle } = useAuth()
+  const { signIn, signUp, signInWithGoogle, error: authError } = useAuth()
 
-  // Test Supabase connection on mount
-  useEffect(() => {
-    async function checkSupabaseConnection() {
-      try {
-        const { data, error } = await supabase.from("_dummy_query").select("*").limit(1)
-        if (error) {
-          console.error("Supabase connection error:", error)
-          setSupabaseStatus(`Connection error: ${error.message}`)
-        } else {
-          setSupabaseStatus("Connected to Supabase successfully")
-        }
-      } catch (err: any) {
-        console.error("Supabase test failed:", err)
-        setSupabaseStatus(`Connection failed: ${err.message}`)
-      }
+  // Show auth context errors
+  React.useEffect(() => {
+    if (authError) {
+      setError(authError)
     }
-
-    if (isOpen) {
-      checkSupabaseConnection()
-    }
-  }, [isOpen])
+  }, [authError])
 
   if (!isOpen) return null
 
@@ -88,15 +71,18 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
     setError(null)
 
     try {
-      console.log("Attempting Google sign in...")
-      const { data, error } = await signInWithGoogle()
-      console.log("Google sign in result:", { data, error })
-
+      console.log("Attempting Google sign in from modal...")
+      const { error } = await signInWithGoogle()
       if (error) {
+        console.error("Google sign in error in modal:", error)
         setError(error.message)
+      } else {
+        console.log("Google sign in initiated successfully from modal")
       }
+      // Note: For OAuth, the redirect happens automatically
+      // so we don't close the modal here
     } catch (err: any) {
-      console.error("Google sign in exception:", err)
+      console.error("Google sign in exception in modal:", err)
       setError(err.message || "An unexpected error occurred")
     } finally {
       setLoading(false)
@@ -114,14 +100,6 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
         </div>
 
         <div className="p-6">
-          {/* Supabase Status */}
-          {supabaseStatus && (
-            <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-xl flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 text-blue-500 flex-shrink-0" />
-              <span className="text-sm text-blue-700">{supabaseStatus}</span>
-            </div>
-          )}
-
           {/* Error Message */}
           {error && (
             <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl flex items-center gap-2">
