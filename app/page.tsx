@@ -60,12 +60,7 @@ export default function TimeBudgetApp() {
           <FloatingToggle activeScreen={activeScreen} onScreenChange={setActiveScreen} />
         </div>
       </div>
-      <AuthModal
-        isOpen={showAuthModal}
-        onClose={() => setShowAuthModal(false)}
-        onAuth={setUser}
-        isInitialLoad={isInitialLoad}
-      />
+      <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} onAuth={setUser} />
     </div>
   )
 }
