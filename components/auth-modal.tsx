@@ -74,10 +74,7 @@ export default function AuthModal({ isOpen, onClose, onAuth }: AuthModalProps) {
               </svg>
             </div>
             <div className="text-sm text-gray-600">
-              <p>
-                Note: To ensure your data is safely stored and accessible across devices, we recommend signing in. You
-                can always do this later in Settings
-              </p>
+              <p>Note: To ensure your data is safely stored and accessible across devices, we recommend signing in.</p>
             </div>
           </div>
         </div>
