@@ -12,9 +12,10 @@ interface AuthModalProps {
   isOpen: boolean
   onClose: () => void
   onAuth: (user: any) => void
+  isInitialLoad?: boolean
 }
 
-export default function AuthModal({ isOpen, onClose, onAuth }: AuthModalProps) {
+export default function AuthModal({ isOpen, onClose, onAuth, isInitialLoad = false }: AuthModalProps) {
   const [isLogin, setIsLogin] = useState(true)
   const [formData, setFormData] = useState({
     email: "",
@@ -53,7 +54,7 @@ export default function AuthModal({ isOpen, onClose, onAuth }: AuthModalProps) {
   }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-[60]">
       <div className="bg-white rounded-3xl w-full max-w-md">
         <div className="flex items-center justify-between p-6 border-b border-gray-100">
           <h2 className="text-xl font-semibold">{isLogin ? "Sign In" : "Create Account"}</h2>
@@ -168,9 +169,11 @@ export default function AuthModal({ isOpen, onClose, onAuth }: AuthModalProps) {
           </form>
 
           <div className="mt-6 flex flex-col space-y-4 text-center">
-            <button onClick={onClose} className="text-gray-600 hover:text-gray-800 font-medium">
-              I'll do it later
-            </button>
+            {isInitialLoad && (
+              <button onClick={onClose} className="text-gray-600 hover:text-gray-800 font-medium">
+                I'll do it later
+              </button>
+            )}
             <button onClick={() => setIsLogin(!isLogin)} className="text-blue-600 hover:text-blue-700 font-medium">
               {isLogin ? "Don't have an account? Sign up" : "Already have an account? Sign in"}
             </button>
