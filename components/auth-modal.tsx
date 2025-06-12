@@ -67,7 +67,7 @@ export default function AuthModal({ isOpen, onClose, isInitialLoad = false }: Au
       await signInWithGoogle()
       // Don't close modal here - let the auth state change handle it
     } catch (error: any) {
-      setError(error.message)
+      setError(error.message || "Failed to sign in with Google")
       setLoading(false)
     }
   }
@@ -94,16 +94,10 @@ export default function AuthModal({ isOpen, onClose, isInitialLoad = false }: Au
               </svg>
             </div>
             <div className="text-sm text-gray-600">
-              {!isSupabaseConfigured ? (
-                <p>
-                  <strong>Authentication Unavailable:</strong> The authentication service is currently not configured.
-                </p>
-              ) : (
-                <p>
-                  Sign in to save your data and access it from any device. Your time tracking data will be securely
-                  stored.
-                </p>
-              )}
+              <p>
+                Sign in to save your time tracking data securely and access it from any device. Your data will be
+                synchronized across all your devices.
+              </p>
             </div>
           </div>
         </div>
