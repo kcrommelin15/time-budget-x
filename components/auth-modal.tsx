@@ -49,22 +49,25 @@ export default function AuthModal({ isOpen, onClose, onAuth, isInitialLoad = fal
       setError(null)
 
       if (provider === "google") {
-        console.log("Starting Google OAuth with manual redirect to bypass CSP...")
+        console.log("Starting Google OAuth flow...")
 
-        // Build the OAuth URL manually to bypass Supabase's popup logic
-        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-        const redirectTo = encodeURIComponent(window.location.origin)
+        // Use the standard Supabase OAuth flow - now that we're in a proper environment
+        const { data, error } = await supabase.auth.signInWithOAuth({
+          provider: "google",
+          options: {
+            redirectTo: window.location.origin,
+          },
+        })
 
-        // Construct the Google OAuth URL manually
-        const oauthUrl = `${supabaseUrl}/auth/v1/authorize?provider=google&redirect_to=${redirectTo}`
+        if (error) {
+          console.error("OAuth error:", error)
+          setError(`OAuth error: ${error.message}`)
+          setIsLoading(false)
+          return
+        }
 
-        console.log("Manual OAuth URL:", oauthUrl)
-        console.log("Performing manual redirect...")
-
-        // Force a full page redirect
-        window.location.href = oauthUrl
-
-        // Don't set loading to false - we're redirecting away
+        console.log("OAuth initiated successfully:", data)
+        // The redirect will happen automatically
       }
     } catch (err) {
       console.error("Unexpected error during OAuth:", err)
@@ -88,14 +91,6 @@ export default function AuthModal({ isOpen, onClose, onAuth, isInitialLoad = fal
             <p className="text-red-600 text-sm">{error}</p>
           </div>
         )}
-
-        {/* CSP Notice */}
-        <div className="px-6 py-3 bg-blue-50 border-b border-blue-100">
-          <p className="text-blue-600 text-xs">
-            Note: Google sign-in will redirect you to a new page due to security restrictions in the preview
-            environment.
-          </p>
-        </div>
 
         <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
           <div className="flex items-start space-x-3">
@@ -124,7 +119,7 @@ export default function AuthModal({ isOpen, onClose, onAuth, isInitialLoad = fal
               disabled={isLoading}
             >
               {isLoading ? (
-                "Redirecting to Google..."
+                "Connecting..."
               ) : (
                 <>
                   <Mail className="w-5 h-5 mr-3" />
