@@ -1,38 +1,26 @@
 import { NextResponse } from "next/server"
-import { createClient } from "@/lib/supabase-server"
+import { createClient } from "@supabase/supabase-js"
+
+// Use the same credentials as in lib/supabase.ts
+const SUPABASE_URL = "https://jxwvedmbnnhmnuujjxwc.supabase.co"
+const SUPABASE_ANON_KEY =
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp4d3ZlZG1ibm5obW51dWpqeHdjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDg4MjAxODIsImV4cCI6MjA2NDM5NjE4Mn0.L94Q6K-LhTCY7QLt07DgQUS7CiZMPjROC1I0Ax0fO1s"
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url)
   const code = searchParams.get("code")
-  // if "next" is in param, use it as the redirect URL
-  let next = searchParams.get("next") ?? "/"
-
-  if (!next.startsWith("/")) {
-    // if "next" is not a relative URL, use the default
-    next = "/"
-  }
+  const next = searchParams.get("next") ?? "/"
 
   if (code) {
-    try {
-      const supabase = createClient()
-      const { error } = await supabase.auth.exchangeCodeForSession(code)
-      if (!error) {
-        const forwardedHost = request.headers.get("x-forwarded-host") // original origin before load balancer
-        const isLocalEnv = process.env.NODE_ENV === "development"
-        if (isLocalEnv) {
-          // we can be sure that there is no load balancer in between, so no need to watch for X-Forwarded-Host
-          return NextResponse.redirect(`${origin}${next}`)
-        } else if (forwardedHost) {
-          return NextResponse.redirect(`https://${forwardedHost}${next}`)
-        } else {
-          return NextResponse.redirect(`${origin}${next}`)
-        }
-      }
-    } catch (error) {
-      console.error("Auth callback error:", error)
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+
+    const { error } = await supabase.auth.exchangeCodeForSession(code)
+
+    if (!error) {
+      return NextResponse.redirect(`${origin}${next}`)
     }
   }
 
-  // return the user to an error page with instructions
+  // Return the user to an error page with instructions
   return NextResponse.redirect(`${origin}/auth/auth-code-error`)
 }
