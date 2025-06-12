@@ -1,16 +1,26 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import BudgetScreen from "@/components/budget-screen"
 import TimelineScreen from "@/components/timeline-screen"
 import EnhancedInsightsScreen from "@/components/enhanced-insights-screen"
 import EnhancedSettingsScreen from "@/components/enhanced-settings-screen"
 import Navigation from "@/components/navigation"
 import FloatingToggle from "@/components/floating-toggle"
+import AuthModal from "@/components/auth-modal"
 
 export default function TimeBudgetApp() {
   const [activeScreen, setActiveScreen] = useState<"budget" | "timeline" | "insights" | "settings">("budget")
   const [user, setUser] = useState(null)
+  const [isInitialLoad, setIsInitialLoad] = useState(true)
+  const [showAuthModal, setShowAuthModal] = useState(false)
+
+  useEffect(() => {
+    if (isInitialLoad && !user) {
+      setShowAuthModal(true)
+      setIsInitialLoad(false)
+    }
+  }, [isInitialLoad, user])
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 relative">
@@ -50,6 +60,12 @@ export default function TimeBudgetApp() {
           <FloatingToggle activeScreen={activeScreen} onScreenChange={setActiveScreen} />
         </div>
       </div>
+      <AuthModal
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        onAuth={setUser}
+        isInitialLoad={isInitialLoad}
+      />
     </div>
   )
 }

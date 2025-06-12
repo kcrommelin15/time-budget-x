@@ -268,7 +268,12 @@ export default function EnhancedSettingsScreen({ user, onAuth, onLogout }: Enhan
         </div>
       )}
 
-      <AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} onAuth={handleAuth} />
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        onAuth={handleAuth}
+        isInitialLoad={false}
+      />
     </div>
   )
 }

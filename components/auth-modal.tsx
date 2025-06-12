@@ -12,9 +12,10 @@ interface AuthModalProps {
   isOpen: boolean
   onClose: () => void
   onAuth: (user: any) => void
+  isInitialLoad?: boolean
 }
 
-export default function AuthModal({ isOpen, onClose, onAuth }: AuthModalProps) {
+export default function AuthModal({ isOpen, onClose, onAuth, isInitialLoad = false }: AuthModalProps) {
   const [isLogin, setIsLogin] = useState(true)
   const [formData, setFormData] = useState({
     email: "",
@@ -53,13 +54,30 @@ export default function AuthModal({ isOpen, onClose, onAuth }: AuthModalProps) {
   }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-[60]">
       <div className="bg-white rounded-3xl w-full max-w-md">
         <div className="flex items-center justify-between p-6 border-b border-gray-100">
           <h2 className="text-xl font-semibold">{isLogin ? "Sign In" : "Create Account"}</h2>
           <Button variant="ghost" size="sm" onClick={onClose} className="rounded-xl">
             <X className="w-4 h-4" />
           </Button>
+        </div>
+
+        <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
+          <div className="flex items-start space-x-3">
+            <div className="flex-shrink-0 mt-1">
+              <svg className="w-5 h-5 text-gray-500" viewBox="0 0 20 20" fill="currentColor">
+                <path
+                  fillRule="evenodd"
+                  d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
+                  clipRule="evenodd"
+                />
+              </svg>
+            </div>
+            <div className="text-sm text-gray-600">
+              <p>Note: To ensure your data is safely stored and accessible across devices, we recommend signing in.</p>
+            </div>
+          </div>
         </div>
 
         <div className="p-6">
@@ -150,7 +168,12 @@ export default function AuthModal({ isOpen, onClose, onAuth }: AuthModalProps) {
             </Button>
           </form>
 
-          <div className="mt-6 text-center">
+          <div className="mt-6 flex flex-col space-y-4 text-center">
+            {isInitialLoad && (
+              <button onClick={onClose} className="text-gray-600 hover:text-gray-800 font-medium">
+                I'll do it later
+              </button>
+            )}
             <button onClick={() => setIsLogin(!isLogin)} className="text-blue-600 hover:text-blue-700 font-medium">
               {isLogin ? "Don't have an account? Sign up" : "Already have an account? Sign in"}
             </button>
