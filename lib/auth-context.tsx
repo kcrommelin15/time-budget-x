@@ -1,19 +1,19 @@
 "use client"
 
 import type React from "react"
-
 import { createContext, useContext, useEffect, useState } from "react"
 import type { User, Session } from "@supabase/supabase-js"
-import { supabase } from "./supabase"
+import { getSupabase } from "./supabase"
 
 interface AuthContextType {
   user: User | null
   session: Session | null
   loading: boolean
+  isSupabaseConfigured: boolean
   signOut: () => Promise<void>
   signInWithGoogle: () => Promise<void>
   signInWithEmail: (email: string, password: string) => Promise<{ error: any }>
-  signUpWithEmail: (email: string, password: string) => Promise<{ error: any }>
+  signUpWithEmail: (email: string, password: string, fullName?: string) => Promise<{ error: any }>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -22,21 +22,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
+  const [isSupabaseConfigured, setIsSupabaseConfigured] = useState(false)
 
   useEffect(() => {
-    // Check if environment variables are available
-    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-      console.warn("Supabase environment variables not configured. Authentication will not work.")
+    const supabase = getSupabase()
+
+    if (!supabase) {
+      console.warn("Supabase not configured - authentication disabled")
+      setIsSupabaseConfigured(false)
       setLoading(false)
       return
     }
 
+    setIsSupabaseConfigured(true)
+
     // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session)
-      setUser(session?.user ?? null)
-      setLoading(false)
-    })
+    supabase.auth
+      .getSession()
+      .then(({ data: { session } }) => {
+        setSession(session)
+        setUser(session?.user ?? null)
+        setLoading(false)
+      })
+      .catch((error) => {
+        console.error("Error getting session:", error)
+        setLoading(false)
+      })
 
     // Listen for auth changes
     const {
@@ -51,30 +62,53 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const signOut = async () => {
-    await supabase.auth.signOut()
+    const supabase = getSupabase()
+    if (!supabase) throw new Error("Supabase not configured")
+
+    const { error } = await supabase.auth.signOut()
+    if (error) throw error
   }
 
   const signInWithGoogle = async () => {
-    await supabase.auth.signInWithOAuth({
+    const supabase = getSupabase()
+    if (!supabase) throw new Error("Supabase not configured")
+
+    const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
         redirectTo: `${window.location.origin}/auth/callback`,
       },
     })
+    if (error) throw error
   }
 
   const signInWithEmail = async (email: string, password: string) => {
+    const supabase = getSupabase()
+    if (!supabase) throw new Error("Supabase not configured")
+
     return await supabase.auth.signInWithPassword({ email, password })
   }
 
-  const signUpWithEmail = async (email: string, password: string) => {
-    return await supabase.auth.signUp({ email, password })
+  const signUpWithEmail = async (email: string, password: string, fullName?: string) => {
+    const supabase = getSupabase()
+    if (!supabase) throw new Error("Supabase not configured")
+
+    return await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          full_name: fullName,
+        },
+      },
+    })
   }
 
   const value = {
     user,
     session,
     loading,
+    isSupabaseConfigured,
     signOut,
     signInWithGoogle,
     signInWithEmail,
