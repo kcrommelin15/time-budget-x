@@ -32,7 +32,7 @@ export default function AuthModal({ isOpen, onClose, isInitialLoad = false }: Au
     e.preventDefault()
 
     if (!isSupabaseConfigured) {
-      setError("Authentication not configured. Please set up Supabase environment variables.")
+      setError("Authentication service is not available.")
       return
     }
 
@@ -57,7 +57,7 @@ export default function AuthModal({ isOpen, onClose, isInitialLoad = false }: Au
 
   const handleGoogleLogin = async () => {
     if (!isSupabaseConfigured) {
-      setError("Authentication not configured. Please set up Supabase environment variables.")
+      setError("Authentication service is not available.")
       return
     }
 
@@ -65,28 +65,9 @@ export default function AuthModal({ isOpen, onClose, isInitialLoad = false }: Au
     setError(null)
     try {
       await signInWithGoogle()
-      onClose()
+      // Don't close modal here - let the auth state change handle it
     } catch (error: any) {
       setError(error.message)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleGitHubLogin = async () => {
-    if (!isSupabaseConfigured) {
-      setError("Authentication not configured. Please set up Supabase environment variables.")
-      return
-    }
-
-    setLoading(true)
-    setError(null)
-    try {
-      // Note: GitHub OAuth would need to be configured in Supabase as well
-      setError("GitHub authentication not yet configured. Please use Google or email.")
-    } catch (error: any) {
-      setError(error.message)
-    } finally {
       setLoading(false)
     }
   }
@@ -115,12 +96,12 @@ export default function AuthModal({ isOpen, onClose, isInitialLoad = false }: Au
             <div className="text-sm text-gray-600">
               {!isSupabaseConfigured ? (
                 <p>
-                  <strong>Setup Required:</strong> To enable authentication, please configure your Supabase environment
-                  variables.
+                  <strong>Authentication Unavailable:</strong> The authentication service is currently not configured.
                 </p>
               ) : (
                 <p>
-                  Note: To ensure your data is safely stored and accessible across devices, we recommend signing in.
+                  Sign in to save your data and access it from any device. Your time tracking data will be securely
+                  stored.
                 </p>
               )}
             </div>
@@ -134,20 +115,6 @@ export default function AuthModal({ isOpen, onClose, isInitialLoad = false }: Au
             </div>
           )}
 
-          {!isSupabaseConfigured && (
-            <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-              <p className="text-sm text-yellow-800">
-                <strong>Environment Variables Required:</strong>
-                <br />
-                Add these to your <code>.env.local</code> file:
-                <br />
-                <code>NEXT_PUBLIC_SUPABASE_URL=your_url_here</code>
-                <br />
-                <code>NEXT_PUBLIC_SUPABASE_ANON_KEY=your_key_here</code>
-              </p>
-            </div>
-          )}
-
           {/* OAuth Buttons */}
           <div className="space-y-3 mb-6">
             <Button
@@ -157,17 +124,12 @@ export default function AuthModal({ isOpen, onClose, isInitialLoad = false }: Au
               className="w-full h-12 rounded-2xl border-gray-300"
             >
               <Mail className="w-5 h-5 mr-3" />
-              Continue with Google
+              {loading ? "Signing in..." : "Continue with Google"}
             </Button>
 
-            <Button
-              onClick={handleGitHubLogin}
-              disabled={loading || !isSupabaseConfigured}
-              variant="outline"
-              className="w-full h-12 rounded-2xl border-gray-300"
-            >
+            <Button disabled={true} variant="outline" className="w-full h-12 rounded-2xl border-gray-300 opacity-50">
               <Github className="w-5 h-5 mr-3" />
-              Continue with GitHub
+              Continue with GitHub (Coming Soon)
             </Button>
           </div>
 
