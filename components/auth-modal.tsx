@@ -2,11 +2,11 @@
 
 import type React from "react"
 import { useState } from "react"
-import { X, Mail, Lock, User, Github } from "lucide-react"
+import { X, Mail, Lock, User, Github, AlertCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { useAuth } from "@/lib/auth-context"
+import { useAuth } from "@/hooks/use-auth"
 
 interface AuthModalProps {
   isOpen: boolean
@@ -24,52 +24,45 @@ export default function AuthModal({ isOpen, onClose, isInitialLoad = false }: Au
     name: "",
   })
 
-  const { signInWithGoogle, signInWithEmail, signUpWithEmail, isSupabaseConfigured } = useAuth()
+  const { signInWithGoogle, signInWithEmail, signUpWithEmail } = useAuth()
 
   if (!isOpen) return null
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-
-    if (!isSupabaseConfigured) {
-      setError("Authentication service is not available.")
-      return
-    }
-
     setLoading(true)
     setError(null)
 
     try {
       if (isLogin) {
-        const { error } = await signInWithEmail(formData.email, formData.password)
-        if (error) throw error
+        await signInWithEmail(formData.email, formData.password)
       } else {
-        const { error } = await signUpWithEmail(formData.email, formData.password, formData.name)
-        if (error) throw error
+        await signUpWithEmail(formData.email, formData.password, formData.name)
       }
       onClose()
-    } catch (error: any) {
-      setError(error.message)
+    } catch (err: any) {
+      setError(err.message || "An error occurred during authentication")
     } finally {
       setLoading(false)
     }
   }
 
   const handleGoogleLogin = async () => {
-    if (!isSupabaseConfigured) {
-      setError("Authentication service is not available.")
-      return
-    }
-
     setLoading(true)
     setError(null)
+
     try {
       await signInWithGoogle()
-      // Don't close modal here - let the auth state change handle it
-    } catch (error: any) {
-      setError(error.message || "Failed to sign in with Google")
+      // Note: The modal will close automatically when auth state changes
+    } catch (err: any) {
+      setError(err.message || "An error occurred during Google authentication")
       setLoading(false)
     }
+  }
+
+  const handleGitHubLogin = async () => {
+    // GitHub OAuth would be implemented similarly
+    setError("GitHub authentication not yet implemented")
   }
 
   return (
@@ -94,18 +87,16 @@ export default function AuthModal({ isOpen, onClose, isInitialLoad = false }: Au
               </svg>
             </div>
             <div className="text-sm text-gray-600">
-              <p>
-                Sign in to save your time tracking data securely and access it from any device. Your data will be
-                synchronized across all your devices.
-              </p>
+              <p>Your data will be securely stored and synced across all your devices with Supabase authentication.</p>
             </div>
           </div>
         </div>
 
         <div className="p-6">
           {error && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-              <p className="text-sm text-red-600">{error}</p>
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0" />
+              <p className="text-sm text-red-700">{error}</p>
             </div>
           )}
 
@@ -113,17 +104,22 @@ export default function AuthModal({ isOpen, onClose, isInitialLoad = false }: Au
           <div className="space-y-3 mb-6">
             <Button
               onClick={handleGoogleLogin}
-              disabled={loading || !isSupabaseConfigured}
+              disabled={loading}
               variant="outline"
               className="w-full h-12 rounded-2xl border-gray-300"
             >
               <Mail className="w-5 h-5 mr-3" />
-              {loading ? "Signing in..." : "Continue with Google"}
+              {loading ? "Connecting..." : "Continue with Google"}
             </Button>
 
-            <Button disabled={true} variant="outline" className="w-full h-12 rounded-2xl border-gray-300 opacity-50">
+            <Button
+              onClick={handleGitHubLogin}
+              disabled={loading}
+              variant="outline"
+              className="w-full h-12 rounded-2xl border-gray-300"
+            >
               <Github className="w-5 h-5 mr-3" />
-              Continue with GitHub (Coming Soon)
+              Continue with GitHub
             </Button>
           </div>
 
@@ -151,7 +147,7 @@ export default function AuthModal({ isOpen, onClose, isInitialLoad = false }: Au
                     className="pl-10 rounded-xl"
                     placeholder="Enter your full name"
                     required={!isLogin}
-                    disabled={loading || !isSupabaseConfigured}
+                    disabled={loading}
                   />
                 </div>
               </div>
@@ -169,7 +165,7 @@ export default function AuthModal({ isOpen, onClose, isInitialLoad = false }: Au
                   className="pl-10 rounded-xl"
                   placeholder="Enter your email"
                   required
-                  disabled={loading || !isSupabaseConfigured}
+                  disabled={loading}
                 />
               </div>
             </div>
@@ -186,7 +182,7 @@ export default function AuthModal({ isOpen, onClose, isInitialLoad = false }: Au
                   className="pl-10 rounded-xl"
                   placeholder="Enter your password"
                   required
-                  disabled={loading || !isSupabaseConfigured}
+                  disabled={loading}
                   minLength={6}
                 />
               </div>
@@ -194,10 +190,10 @@ export default function AuthModal({ isOpen, onClose, isInitialLoad = false }: Au
 
             <Button
               type="submit"
-              disabled={loading || !isSupabaseConfigured}
+              disabled={loading}
               className="w-full h-12 rounded-2xl bg-gradient-to-r from-blue-500 to-purple-600"
             >
-              {loading ? "Loading..." : isLogin ? "Sign In" : "Create Account"}
+              {loading ? "Please wait..." : isLogin ? "Sign In" : "Create Account"}
             </Button>
           </form>
 

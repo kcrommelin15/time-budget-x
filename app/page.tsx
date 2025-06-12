@@ -8,19 +8,39 @@ import EnhancedSettingsScreen from "@/components/enhanced-settings-screen"
 import Navigation from "@/components/navigation"
 import FloatingToggle from "@/components/floating-toggle"
 import AuthModal from "@/components/auth-modal"
+import { useAuth } from "@/hooks/use-auth"
 
 export default function TimeBudgetApp() {
   const [activeScreen, setActiveScreen] = useState<"budget" | "timeline" | "insights" | "settings">("budget")
-  const [user, setUser] = useState(null)
   const [isInitialLoad, setIsInitialLoad] = useState(true)
   const [showAuthModal, setShowAuthModal] = useState(false)
 
+  const { user, loading } = useAuth()
+
   useEffect(() => {
-    if (isInitialLoad && !user) {
+    if (!loading && isInitialLoad && !user) {
       setShowAuthModal(true)
       setIsInitialLoad(false)
     }
-  }, [isInitialLoad, user])
+  }, [loading, isInitialLoad, user])
+
+  // Close auth modal when user signs in
+  useEffect(() => {
+    if (user && showAuthModal) {
+      setShowAuthModal(false)
+    }
+  }, [user, showAuthModal])
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 relative">
@@ -34,9 +54,7 @@ export default function TimeBudgetApp() {
             {activeScreen === "budget" && <BudgetScreen isDesktop={true} />}
             {activeScreen === "timeline" && <TimelineScreen isDesktop={true} />}
             {activeScreen === "insights" && <EnhancedInsightsScreen />}
-            {activeScreen === "settings" && (
-              <EnhancedSettingsScreen user={user} onAuth={setUser} onLogout={() => setUser(null)} />
-            )}
+            {activeScreen === "settings" && <EnhancedSettingsScreen user={user} />}
           </div>
         </div>
 
@@ -45,9 +63,7 @@ export default function TimeBudgetApp() {
           {activeScreen === "budget" && <BudgetScreen />}
           {activeScreen === "timeline" && <TimelineScreen />}
           {activeScreen === "insights" && <EnhancedInsightsScreen />}
-          {activeScreen === "settings" && (
-            <EnhancedSettingsScreen user={user} onAuth={setUser} onLogout={() => setUser(null)} />
-          )}
+          {activeScreen === "settings" && <EnhancedSettingsScreen user={user} />}
         </div>
 
         {/* Mobile Navigation - Fixed to viewport bottom */}
@@ -60,12 +76,8 @@ export default function TimeBudgetApp() {
           <FloatingToggle activeScreen={activeScreen} onScreenChange={setActiveScreen} />
         </div>
       </div>
-      <AuthModal
-        isOpen={showAuthModal}
-        onClose={() => setShowAuthModal(false)}
-        onAuth={setUser}
-        isInitialLoad={isInitialLoad}
-      />
+
+      <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} isInitialLoad={isInitialLoad} />
     </div>
   )
 }
