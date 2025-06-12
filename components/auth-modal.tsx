@@ -1,56 +1,96 @@
 "use client"
 
 import type React from "react"
-
 import { useState } from "react"
 import { X, Mail, Lock, User, Github } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { useAuth } from "@/lib/auth-context"
+import { supabase } from "@/lib/supabase"
 
 interface AuthModalProps {
   isOpen: boolean
   onClose: () => void
-  onAuth: (user: any) => void
   isInitialLoad?: boolean
 }
 
-export default function AuthModal({ isOpen, onClose, onAuth, isInitialLoad = false }: AuthModalProps) {
+export default function AuthModal({ isOpen, onClose, isInitialLoad = false }: AuthModalProps) {
   const [isLogin, setIsLogin] = useState(true)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [formData, setFormData] = useState({
     email: "",
     password: "",
     name: "",
   })
 
+  const { signInWithGoogle } = useAuth()
+
   if (!isOpen) return null
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setLoading(true)
+    setError(null)
 
-    // Mock authentication
-    const user = {
-      id: "1",
-      name: formData.name || "John Doe",
-      email: formData.email,
-      avatar: null,
+    try {
+      if (isLogin) {
+        const { error } = await supabase.auth.signInWithPassword({
+          email: formData.email,
+          password: formData.password,
+        })
+        if (error) throw error
+      } else {
+        const { error } = await supabase.auth.signUp({
+          email: formData.email,
+          password: formData.password,
+          options: {
+            data: {
+              full_name: formData.name,
+            },
+          },
+        })
+        if (error) throw error
+      }
+      onClose()
+    } catch (error: any) {
+      setError(error.message)
+    } finally {
+      setLoading(false)
     }
-
-    onAuth(user)
-    onClose()
   }
 
-  const handleOAuthLogin = (provider: string) => {
-    // Mock OAuth login
-    const user = {
-      id: "1",
-      name: "John Doe",
-      email: "john.doe@example.com",
-      avatar: null,
+  const handleGoogleLogin = async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      await signInWithGoogle()
+      onClose()
+    } catch (error: any) {
+      setError(error.message)
+    } finally {
+      setLoading(false)
     }
+  }
 
-    onAuth(user)
-    onClose()
+  const handleGitHubLogin = async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "github",
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+        },
+      })
+      if (error) throw error
+      onClose()
+    } catch (error: any) {
+      setError(error.message)
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -81,10 +121,17 @@ export default function AuthModal({ isOpen, onClose, onAuth, isInitialLoad = fal
         </div>
 
         <div className="p-6">
+          {error && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-sm text-red-600">{error}</p>
+            </div>
+          )}
+
           {/* OAuth Buttons */}
           <div className="space-y-3 mb-6">
             <Button
-              onClick={() => handleOAuthLogin("google")}
+              onClick={handleGoogleLogin}
+              disabled={loading}
               variant="outline"
               className="w-full h-12 rounded-2xl border-gray-300"
             >
@@ -93,7 +140,8 @@ export default function AuthModal({ isOpen, onClose, onAuth, isInitialLoad = fal
             </Button>
 
             <Button
-              onClick={() => handleOAuthLogin("github")}
+              onClick={handleGitHubLogin}
+              disabled={loading}
               variant="outline"
               className="w-full h-12 rounded-2xl border-gray-300"
             >
@@ -126,6 +174,7 @@ export default function AuthModal({ isOpen, onClose, onAuth, isInitialLoad = fal
                     className="pl-10 rounded-xl"
                     placeholder="Enter your full name"
                     required={!isLogin}
+                    disabled={loading}
                   />
                 </div>
               </div>
@@ -143,6 +192,7 @@ export default function AuthModal({ isOpen, onClose, onAuth, isInitialLoad = fal
                   className="pl-10 rounded-xl"
                   placeholder="Enter your email"
                   required
+                  disabled={loading}
                 />
               </div>
             </div>
@@ -159,22 +209,36 @@ export default function AuthModal({ isOpen, onClose, onAuth, isInitialLoad = fal
                   className="pl-10 rounded-xl"
                   placeholder="Enter your password"
                   required
+                  disabled={loading}
+                  minLength={6}
                 />
               </div>
             </div>
 
-            <Button type="submit" className="w-full h-12 rounded-2xl bg-gradient-to-r from-blue-500 to-purple-600">
-              {isLogin ? "Sign In" : "Create Account"}
+            <Button
+              type="submit"
+              disabled={loading}
+              className="w-full h-12 rounded-2xl bg-gradient-to-r from-blue-500 to-purple-600"
+            >
+              {loading ? "Loading..." : isLogin ? "Sign In" : "Create Account"}
             </Button>
           </form>
 
           <div className="mt-6 flex flex-col space-y-4 text-center">
             {isInitialLoad && (
-              <button onClick={onClose} className="text-gray-600 hover:text-gray-800 font-medium">
+              <button
+                onClick={onClose}
+                disabled={loading}
+                className="text-gray-600 hover:text-gray-800 font-medium disabled:opacity-50"
+              >
                 I'll do it later
               </button>
             )}
-            <button onClick={() => setIsLogin(!isLogin)} className="text-blue-600 hover:text-blue-700 font-medium">
+            <button
+              onClick={() => setIsLogin(!isLogin)}
+              disabled={loading}
+              className="text-blue-600 hover:text-blue-700 font-medium disabled:opacity-50"
+            >
               {isLogin ? "Don't have an account? Sign up" : "Already have an account? Sign in"}
             </button>
           </div>
