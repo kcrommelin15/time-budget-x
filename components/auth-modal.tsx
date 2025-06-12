@@ -1,65 +1,117 @@
 "use client"
 
 import type React from "react"
-
 import { useState } from "react"
 import { X, Mail, Lock, User, Github } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { createClient } from "@supabase/supabase-js"
 
 interface AuthModalProps {
   isOpen: boolean
   onClose: () => void
   onAuth: (user: any) => void
+  isInitialLoad?: boolean
 }
 
-export default function AuthModal({ isOpen, onClose, onAuth }: AuthModalProps) {
+export default function AuthModal({ isOpen, onClose, onAuth, isInitialLoad = false }: AuthModalProps) {
   const [isLogin, setIsLogin] = useState(true)
   const [formData, setFormData] = useState({
     email: "",
     password: "",
     name: "",
   })
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  // Create a direct Supabase client
+  const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
 
   if (!isOpen) return null
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-
-    // Mock authentication
+    // Mock authentication for email/password
     const user = {
       id: "1",
       name: formData.name || "John Doe",
       email: formData.email,
       avatar: null,
     }
-
     onAuth(user)
     onClose()
   }
 
-  const handleOAuthLogin = (provider: string) => {
-    // Mock OAuth login
-    const user = {
-      id: "1",
-      name: "John Doe",
-      email: "john.doe@example.com",
-      avatar: null,
-    }
+  const handleOAuthLogin = async (provider: string) => {
+    try {
+      setIsLoading(true)
+      setError(null)
 
-    onAuth(user)
-    onClose()
+      if (provider === "google") {
+        console.log("Starting Google OAuth with manual redirect to bypass CSP...")
+
+        // Build the OAuth URL manually to bypass Supabase's popup logic
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+        const redirectTo = encodeURIComponent(window.location.origin)
+
+        // Construct the Google OAuth URL manually
+        const oauthUrl = `${supabaseUrl}/auth/v1/authorize?provider=google&redirect_to=${redirectTo}`
+
+        console.log("Manual OAuth URL:", oauthUrl)
+        console.log("Performing manual redirect...")
+
+        // Force a full page redirect
+        window.location.href = oauthUrl
+
+        // Don't set loading to false - we're redirecting away
+      }
+    } catch (err) {
+      console.error("Unexpected error during OAuth:", err)
+      setError(`Unexpected error: ${err instanceof Error ? err.message : String(err)}`)
+      setIsLoading(false)
+    }
   }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-[60]">
       <div className="bg-white rounded-3xl w-full max-w-md">
         <div className="flex items-center justify-between p-6 border-b border-gray-100">
           <h2 className="text-xl font-semibold">{isLogin ? "Sign In" : "Create Account"}</h2>
           <Button variant="ghost" size="sm" onClick={onClose} className="rounded-xl">
             <X className="w-4 h-4" />
           </Button>
+        </div>
+
+        {error && (
+          <div className="px-6 py-4 bg-red-50 border-b border-red-100">
+            <p className="text-red-600 text-sm">{error}</p>
+          </div>
+        )}
+
+        {/* CSP Notice */}
+        <div className="px-6 py-3 bg-blue-50 border-b border-blue-100">
+          <p className="text-blue-600 text-xs">
+            Note: Google sign-in will redirect you to a new page due to security restrictions in the preview
+            environment.
+          </p>
+        </div>
+
+        <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
+          <div className="flex items-start space-x-3">
+            <div className="flex-shrink-0 mt-1">
+              <svg className="w-5 h-5 text-gray-500" viewBox="0 0 20 20" fill="currentColor">
+                <path
+                  fillRule="evenodd"
+                  d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
+                  clipRule="evenodd"
+                />
+              </svg>
+            </div>
+            <div className="text-sm text-gray-600">
+              <p>Note: To ensure your data is safely stored and accessible across devices, we recommend signing in.</p>
+            </div>
+          </div>
         </div>
 
         <div className="p-6">
@@ -69,15 +121,23 @@ export default function AuthModal({ isOpen, onClose, onAuth }: AuthModalProps) {
               onClick={() => handleOAuthLogin("google")}
               variant="outline"
               className="w-full h-12 rounded-2xl border-gray-300"
+              disabled={isLoading}
             >
-              <Mail className="w-5 h-5 mr-3" />
-              Continue with Google
+              {isLoading ? (
+                "Redirecting to Google..."
+              ) : (
+                <>
+                  <Mail className="w-5 h-5 mr-3" />
+                  Continue with Google
+                </>
+              )}
             </Button>
 
             <Button
               onClick={() => handleOAuthLogin("github")}
               variant="outline"
               className="w-full h-12 rounded-2xl border-gray-300"
+              disabled={isLoading}
             >
               <Github className="w-5 h-5 mr-3" />
               Continue with GitHub
@@ -150,7 +210,12 @@ export default function AuthModal({ isOpen, onClose, onAuth }: AuthModalProps) {
             </Button>
           </form>
 
-          <div className="mt-6 text-center">
+          <div className="mt-6 flex flex-col space-y-4 text-center">
+            {isInitialLoad && (
+              <button onClick={onClose} className="text-gray-600 hover:text-gray-800 font-medium">
+                I'll do it later
+              </button>
+            )}
             <button onClick={() => setIsLogin(!isLogin)} className="text-blue-600 hover:text-blue-700 font-medium">
               {isLogin ? "Don't have an account? Sign up" : "Already have an account? Sign in"}
             </button>
