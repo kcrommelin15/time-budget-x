@@ -1,16 +1,4 @@
-"use client"
-
-import { useState } from "react"
-import { DragDropContext, Droppable } from "@hello-pangea/dnd"
-import { Plus, Calendar, Edit3, Check } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import EditCategoryModal from "@/components/edit-category-modal"
-import TrackingPreferencesModal from "@/components/tracking-preferences-modal"
-import ListStyleCategoryCard from "@/components/list-style-category-card"
-import ArchivedCategoriesSection from "@/components/archived-categories-section"
-import EnhancedAllocationBanner from "@/components/enhanced-allocation-banner"
 import { useCategories } from "@/hooks/use-categories"
-import type { Category } from "@/lib/types"
 import type { User } from "@supabase/supabase-js"
 
 interface BudgetScreenProps {
@@ -35,179 +23,20 @@ export default function BudgetScreen({ isDesktop = false, user = null }: BudgetS
     deleteSubcategory,
   } = useCategories(user)
 
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false)
-  const [isPreferencesOpen, setIsPreferencesOpen] = useState(false)
-  const [isEditMode, setIsEditMode] = useState(false)
-
-  const totalBudgeted = categories.reduce((sum, cat) => sum + cat.weeklyBudget, 0)
-  const remainingHours = 168 - totalBudgeted // 168 hours in a week
-
-  const handleDragEnd = (result: any) => {
-    if (!result.destination) return
-
-    const items = Array.from(categories)
-    const [reorderedItem] = items.splice(result.source.index, 1)
-    items.splice(result.destination.index, 0, reorderedItem)
-
-    reorderCategories(items)
-  }
-
-  const handleAddCategory = (newCategory: Omit<Category, "id" | "timeUsed">) => {
-    addCategory(newCategory)
-    setIsAddModalOpen(false)
-  }
-
-  const handleEditCategory = (updatedCategory: Category) => {
-    updateCategory(updatedCategory)
-  }
-
-  const handleArchiveCategory = (categoryId: string) => {
-    archiveCategory(categoryId)
-  }
-
-  const handleRestoreCategory = (categoryId: string) => {
-    restoreCategory(categoryId)
-  }
-
-  const handlePermanentDelete = (categoryId: string) => {
-    deleteCategory(categoryId)
-  }
-
-  const handleQuickBudgetEdit = (categoryId: string, newBudget: number) => {
-    const categoryToUpdate = categories.find((cat) => cat.id === categoryId)
-    if (categoryToUpdate) {
-      updateCategory({ ...categoryToUpdate, weeklyBudget: newBudget })
-    }
-  }
-
-  const handleSubcategoryReorder = (categoryId: string, subcategories: any[]) => {
-    const categoryToUpdate = categories.find((cat) => cat.id === categoryId)
-    if (categoryToUpdate) {
-      updateCategory({ ...categoryToUpdate, subcategories })
-    }
-  }
-
-  const handleSubcategoryEdit = (categoryId: string, subcategoryName: string, newBudget: number) => {
-    updateSubcategory(categoryId, subcategoryName, newBudget)
-  }
-
-  const handleSubcategoryDelete = (categoryId: string, subcategoryName: string) => {
-    deleteSubcategory(categoryId, subcategoryName)
-  }
-
-  const handleSubcategoryAdd = (categoryId: string, subcategoryName: string, budget: number) => {
-    addSubcategory(categoryId, subcategoryName, budget)
-  }
-
   return (
-    <div className={`${isDesktop ? "min-h-screen" : "pb-20"} p-6`}>
-      {/* Header */}
-      <div className="mb-6">
-        <div className="flex items-center gap-4 mb-2">
-          <h1 className="text-3xl font-bold text-gray-900">Time Budget</h1>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setIsPreferencesOpen(true)}
-              className="rounded-2xl hover:bg-white/80 backdrop-blur-sm border border-gray-200 bg-white/60 shadow-lg"
-            >
-              <Calendar className="w-5 h-5" />
-            </Button>
-            <Button
-              variant={isEditMode ? "default" : "outline"}
-              size="sm"
-              onClick={() => setIsEditMode(!isEditMode)}
-              className={`rounded-2xl backdrop-blur-sm border border-gray-200 shadow-lg ${
-                isEditMode ? "bg-gray-900 text-white" : "bg-white/80 hover:bg-white"
-              }`}
-            >
-              {isEditMode ? <Check className="w-4 h-4 mr-2" /> : <Edit3 className="w-4 h-4 mr-2" />}
-              {isEditMode ? "Done" : "Edit"}
-            </Button>
-          </div>
-        </div>
-      </div>
-
-      {/* Error Display */}
-      {error && (
-        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-2xl">
-          <p className="text-red-700 text-sm">{error}</p>
-        </div>
+    <div>
+      {/* Your budget screen content here */}
+      {loading && <p>Loading...</p>}
+      {error && <p>Error: {error.message}</p>}
+      {categories && categories.length > 0 ? (
+        <ul>
+          {categories.map((category) => (
+            <li key={category.id}>{category.name}</li>
+          ))}
+        </ul>
+      ) : (
+        <p>No categories found.</p>
       )}
-
-      {/* Loading Display */}
-      {loading && (
-        <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-2xl">
-          <p className="text-blue-700 text-sm">Loading categories...</p>
-        </div>
-      )}
-
-      {/* Enhanced Allocation Banner */}
-      {remainingHours !== 0 && (
-        <EnhancedAllocationBanner
-          remainingHours={remainingHours}
-          isEditMode={isEditMode}
-          onEnterEditMode={() => setIsEditMode(true)}
-        />
-      )}
-
-      {/* Categories */}
-      <DragDropContext onDragEnd={handleDragEnd}>
-        <Droppable droppableId="categories" isDropDisabled={!isEditMode}>
-          {(provided) => (
-            <div {...provided.droppableProps} ref={provided.innerRef} className="space-y-4">
-              {categories.map((category, index) => (
-                <ListStyleCategoryCard
-                  key={category.id}
-                  category={category}
-                  index={index}
-                  isEditMode={isEditMode}
-                  onEdit={handleEditCategory}
-                  onArchive={handleArchiveCategory}
-                  onQuickBudgetEdit={handleQuickBudgetEdit}
-                  onSubcategoryReorder={handleSubcategoryReorder}
-                  onSubcategoryEdit={handleSubcategoryEdit}
-                  onSubcategoryDelete={handleSubcategoryDelete}
-                  onSubcategoryAdd={handleSubcategoryAdd}
-                />
-              ))}
-              {provided.placeholder}
-            </div>
-          )}
-        </Droppable>
-      </DragDropContext>
-
-      {/* Add Category Button - Back at bottom */}
-      <div className="mt-8">
-        <div className="bg-white rounded-3xl border border-gray-200/60 shadow-xl hover:shadow-2xl transition-all duration-300 hover:border-gray-300/60">
-          <Button
-            onClick={() => setIsAddModalOpen(true)}
-            variant="ghost"
-            className="w-full h-20 rounded-3xl text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-all duration-200"
-          >
-            <Plus className="w-6 h-6 mr-3" />
-            <span className="text-lg font-medium">Add Category</span>
-          </Button>
-        </div>
-      </div>
-
-      {/* Archived Categories */}
-      {isEditMode && (
-        <ArchivedCategoriesSection
-          archivedCategories={archivedCategories}
-          onRestore={handleRestoreCategory}
-          onPermanentDelete={handlePermanentDelete}
-        />
-      )}
-
-      <EditCategoryModal
-        isOpen={isAddModalOpen}
-        onClose={() => setIsAddModalOpen(false)}
-        onAdd={handleAddCategory}
-        mode="add"
-      />
-      <TrackingPreferencesModal isOpen={isPreferencesOpen} onClose={() => setIsPreferencesOpen(false)} />
     </div>
   )
 }
