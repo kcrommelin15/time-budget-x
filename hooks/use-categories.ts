@@ -35,19 +35,18 @@ export function useCategories(user: User | null) {
     try {
       const userCategories = await DataService.getCategories()
 
+      // Always set the categories from database, even if empty
+      setCategories(userCategories)
+
+      // Initialize user data (but don't create default categories)
       if (userCategories.length === 0) {
-        // Initialize user with default data
         await DataService.initializeUserData()
-        const newCategories = await DataService.getCategories()
-        setCategories(newCategories)
-      } else {
-        setCategories(userCategories)
       }
     } catch (err) {
       console.error("Error loading categories:", err)
       setError(err instanceof Error ? err.message : "Failed to load categories")
-      // Fall back to mock data on error
-      setCategories(mockCategories)
+      // Fall back to empty array on error when signed in
+      setCategories([])
     } finally {
       setLoading(false)
     }
