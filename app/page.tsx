@@ -8,7 +8,7 @@ import EnhancedSettingsScreen from "@/components/enhanced-settings-screen"
 import Navigation from "@/components/navigation"
 import FloatingToggle from "@/components/floating-toggle"
 import AuthModal from "@/components/auth-modal"
-import { createClient } from "@/lib/supabase/client"
+import { createClient, isSupabaseAvailable } from "@/lib/supabase/client"
 import type { User } from "@supabase/supabase-js"
 
 export default function TimeBudgetApp() {
@@ -17,6 +17,7 @@ export default function TimeBudgetApp() {
   const [isInitialLoad, setIsInitialLoad] = useState(true)
   const [showAuthModal, setShowAuthModal] = useState(false)
   const [authError, setAuthError] = useState<string | null>(null)
+  const [isDemoMode, setIsDemoMode] = useState(false)
 
   const supabase = createClient()
 
@@ -25,6 +26,17 @@ export default function TimeBudgetApp() {
 
     const initializeAuth = async () => {
       try {
+        // Check if Supabase is available
+        if (!isSupabaseAvailable()) {
+          console.log("Running in demo mode - Supabase not configured")
+          if (mounted) {
+            setIsDemoMode(true)
+            setIsInitialLoad(false)
+            // Don't show auth modal in demo mode
+          }
+          return
+        }
+
         // Check for auth success/error in URL params
         const urlParams = new URLSearchParams(window.location.search)
         const authError = urlParams.get("auth_error")
@@ -75,31 +87,38 @@ export default function TimeBudgetApp() {
 
     initializeAuth()
 
-    // Listen for auth changes
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (!mounted) return
+    // Only set up auth listener if Supabase is available
+    if (isSupabaseAvailable()) {
+      // Listen for auth changes
+      const {
+        data: { subscription },
+      } = supabase.auth.onAuthStateChange(async (event, session) => {
+        if (!mounted) return
 
-      console.log("Auth state changed:", event)
+        console.log("Auth state changed:", event)
 
-      if (event === "SIGNED_IN" && session?.user) {
-        setUser(session.user)
-        setShowAuthModal(false)
-        setAuthError(null)
-      } else if (event === "SIGNED_OUT") {
-        setUser(null)
-        // Clear any error state
-        setAuthError(null)
-        // Don't automatically show auth modal on sign out
-      } else if (event === "TOKEN_REFRESHED" && session?.user) {
-        setUser(session.user)
+        if (event === "SIGNED_IN" && session?.user) {
+          setUser(session.user)
+          setShowAuthModal(false)
+          setAuthError(null)
+        } else if (event === "SIGNED_OUT") {
+          setUser(null)
+          // Clear any error state
+          setAuthError(null)
+          // Don't automatically show auth modal on sign out
+        } else if (event === "TOKEN_REFRESHED" && session?.user) {
+          setUser(session.user)
+        }
+      })
+
+      return () => {
+        mounted = false
+        subscription.unsubscribe()
       }
-    })
+    }
 
     return () => {
       mounted = false
-      subscription.unsubscribe()
     }
   }, [supabase])
 
@@ -110,7 +129,9 @@ export default function TimeBudgetApp() {
 
   const handleLogout = async () => {
     try {
-      await supabase.auth.signOut()
+      if (isSupabaseAvailable()) {
+        await supabase.auth.signOut()
+      }
       setUser(null)
       setAuthError(null)
     } catch (error) {
@@ -122,6 +143,13 @@ export default function TimeBudgetApp() {
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 relative">
       {/* Subtle gradient overlay for extra glossiness */}
       <div className="absolute inset-0 bg-gradient-to-tr from-blue-50/30 via-transparent to-purple-50/20 pointer-events-none"></div>
+
+      {/* Demo Mode Banner */}
+      {isDemoMode && (
+        <div className="fixed top-4 left-1/2 transform -translate-x-1/2 bg-blue-100 border border-blue-400 text-blue-700 px-4 py-2 rounded z-50">
+          <p className="text-sm">Demo Mode - Authentication disabled</p>
+        </div>
+      )}
 
       {authError && (
         <div className="fixed top-4 left-1/2 transform -translate-x-1/2 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded z-50">
@@ -140,7 +168,7 @@ export default function TimeBudgetApp() {
             {activeScreen === "timeline" && <TimelineScreen isDesktop={true} />}
             {activeScreen === "insights" && <EnhancedInsightsScreen />}
             {activeScreen === "settings" && (
-              <EnhancedSettingsScreen user={user} onAuth={handleAuth} onLogout={handleLogout} />
+              <EnhancedSettingsScreen user={user} onAuth={handleAuth} onLogout={handleLogout} isDemoMode={isDemoMode} />
             )}
           </div>
         </div>
@@ -151,7 +179,7 @@ export default function TimeBudgetApp() {
           {activeScreen === "timeline" && <TimelineScreen />}
           {activeScreen === "insights" && <EnhancedInsightsScreen />}
           {activeScreen === "settings" && (
-            <EnhancedSettingsScreen user={user} onAuth={handleAuth} onLogout={handleLogout} />
+            <EnhancedSettingsScreen user={user} onAuth={handleAuth} onLogout={handleLogout} isDemoMode={isDemoMode} />
           )}
         </div>
 
@@ -166,12 +194,15 @@ export default function TimeBudgetApp() {
         </div>
       </div>
 
-      <AuthModal
-        isOpen={showAuthModal}
-        onClose={() => setShowAuthModal(false)}
-        onAuth={handleAuth}
-        isInitialLoad={isInitialLoad}
-      />
+      {/* Only show auth modal if not in demo mode */}
+      {!isDemoMode && (
+        <AuthModal
+          isOpen={showAuthModal}
+          onClose={() => setShowAuthModal(false)}
+          onAuth={handleAuth}
+          isInitialLoad={isInitialLoad}
+        />
+      )}
     </div>
   )
 }
