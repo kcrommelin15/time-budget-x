@@ -8,69 +8,87 @@ import EnhancedSettingsScreen from "@/components/enhanced-settings-screen"
 import Navigation from "@/components/navigation"
 import FloatingToggle from "@/components/floating-toggle"
 import AuthModal from "@/components/auth-modal"
-import { createClient } from "@supabase/supabase-js"
+import { createClient } from "@/lib/supabase/client"
+import type { User } from "@supabase/supabase-js"
 
 export default function TimeBudgetApp() {
   const [activeScreen, setActiveScreen] = useState<"budget" | "timeline" | "insights" | "settings">("budget")
-  const [user, setUser] = useState(null)
+  const [user, setUser] = useState<User | null>(null)
   const [isInitialLoad, setIsInitialLoad] = useState(true)
   const [showAuthModal, setShowAuthModal] = useState(false)
   const [authError, setAuthError] = useState<string | null>(null)
 
-  // Create a direct Supabase client - simplest approach
-  const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
+  const supabase = createClient()
 
   useEffect(() => {
-    // Check for auth state on load
-    const checkUser = async () => {
+    let mounted = true
+
+    const initializeAuth = async () => {
       try {
-        console.log("Checking auth state...")
-        const { data, error } = await supabase.auth.getSession()
+        const {
+          data: { session },
+          error,
+        } = await supabase.auth.getSession()
 
         if (error) {
           console.error("Error getting session:", error)
-          setAuthError(`Session error: ${error.message}`)
+          if (mounted) {
+            setAuthError(`Session error: ${error.message}`)
+          }
           return
         }
 
-        if (data?.session?.user) {
-          console.log("User is authenticated:", data.session.user)
-          setUser(data.session.user)
-        } else {
-          console.log("No authenticated user found")
+        if (mounted) {
+          setUser(session?.user ?? null)
+          setIsInitialLoad(false)
+
+          // Only show auth modal on initial load if no user
+          if (!session?.user) {
+            setShowAuthModal(true)
+          }
         }
       } catch (err) {
         console.error("Unexpected error checking auth:", err)
-        setAuthError(`Auth check error: ${err instanceof Error ? err.message : String(err)}`)
-      } finally {
-        setIsInitialLoad(false)
+        if (mounted) {
+          setAuthError(`Auth check error: ${err instanceof Error ? err.message : String(err)}`)
+          setIsInitialLoad(false)
+        }
       }
     }
 
-    checkUser()
+    initializeAuth()
 
     // Listen for auth changes
-    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log("Auth state changed:", event, session?.user)
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!mounted) return
+
+      console.log("Auth state changed:", event)
 
       if (event === "SIGNED_IN" && session?.user) {
         setUser(session.user)
         setShowAuthModal(false)
+        setAuthError(null)
       } else if (event === "SIGNED_OUT") {
         setUser(null)
       }
     })
 
     return () => {
-      authListener?.subscription.unsubscribe()
+      mounted = false
+      subscription.unsubscribe()
     }
   }, [supabase])
 
-  useEffect(() => {
-    if (isInitialLoad && !user) {
-      setShowAuthModal(true)
-    }
-  }, [isInitialLoad, user])
+  const handleAuth = (userData: User) => {
+    setUser(userData)
+    setShowAuthModal(false)
+  }
+
+  const handleLogout = () => {
+    setUser(null)
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 relative">
@@ -94,7 +112,7 @@ export default function TimeBudgetApp() {
             {activeScreen === "timeline" && <TimelineScreen isDesktop={true} />}
             {activeScreen === "insights" && <EnhancedInsightsScreen />}
             {activeScreen === "settings" && (
-              <EnhancedSettingsScreen user={user} onAuth={setUser} onLogout={() => setUser(null)} />
+              <EnhancedSettingsScreen user={user} onAuth={handleAuth} onLogout={handleLogout} />
             )}
           </div>
         </div>
@@ -105,7 +123,7 @@ export default function TimeBudgetApp() {
           {activeScreen === "timeline" && <TimelineScreen />}
           {activeScreen === "insights" && <EnhancedInsightsScreen />}
           {activeScreen === "settings" && (
-            <EnhancedSettingsScreen user={user} onAuth={setUser} onLogout={() => setUser(null)} />
+            <EnhancedSettingsScreen user={user} onAuth={handleAuth} onLogout={handleLogout} />
           )}
         </div>
 
@@ -119,10 +137,11 @@ export default function TimeBudgetApp() {
           <FloatingToggle activeScreen={activeScreen} onScreenChange={setActiveScreen} />
         </div>
       </div>
+
       <AuthModal
         isOpen={showAuthModal}
         onClose={() => setShowAuthModal(false)}
-        onAuth={setUser}
+        onAuth={handleAuth}
         isInitialLoad={isInitialLoad}
       />
     </div>

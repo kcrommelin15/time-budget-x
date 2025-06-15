@@ -1,46 +1,32 @@
-import { createClient } from "@supabase/supabase-js"
+import { createClient } from "@/lib/supabase/server"
 import { NextResponse } from "next/server"
 import { cookies } from "next/headers"
 
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url)
   const code = requestUrl.searchParams.get("code")
+  const next = requestUrl.searchParams.get("next") ?? "/"
 
-  // If no code is present, redirect to home page
-  if (!code) {
-    return NextResponse.redirect(new URL("/", requestUrl.origin))
-  }
+  if (code) {
+    const cookieStore = cookies()
+    const supabase = createClient(cookieStore)
 
-  try {
-    // Create a Supabase client
-    const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, {
-      cookies: {
-        get(name: string) {
-          return cookies().get(name)?.value
-        },
-        set(name: string, value: string, options: any) {
-          cookies().set({ name, value, ...options })
-        },
-        remove(name: string, options: any) {
-          cookies().set({ name, value: "", ...options })
-        },
-      },
-    })
-
-    // Exchange the code for a session
     const { error } = await supabase.auth.exchangeCodeForSession(code)
 
-    if (error) {
-      console.error("Error exchanging code for session:", error)
-      return NextResponse.redirect(new URL(`/?error=${encodeURIComponent(error.message)}`, requestUrl.origin))
-    }
+    if (!error) {
+      const forwardedHost = request.headers.get("x-forwarded-host")
+      const isLocalEnv = process.env.NODE_ENV === "development"
 
-    // Redirect to the home page
-    return NextResponse.redirect(new URL("/", requestUrl.origin))
-  } catch (error) {
-    console.error("Unexpected error in auth callback:", error)
-    return NextResponse.redirect(
-      new URL(`/?error=${encodeURIComponent("Unexpected error during authentication")}`, requestUrl.origin),
-    )
+      if (isLocalEnv) {
+        return NextResponse.redirect(`${requestUrl.origin}${next}`)
+      } else if (forwardedHost) {
+        return NextResponse.redirect(`https://${forwardedHost}${next}`)
+      } else {
+        return NextResponse.redirect(`${requestUrl.origin}${next}`)
+      }
+    }
   }
+
+  // Return to home page with error
+  return NextResponse.redirect(`${requestUrl.origin}/?error=auth_callback_error`)
 }

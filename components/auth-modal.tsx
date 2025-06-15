@@ -6,12 +6,13 @@ import { X, Mail, Lock, User, Github } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { createClient } from "@supabase/supabase-js"
+import { createClient } from "@/lib/supabase/client"
+import type { User as SupabaseUser } from "@supabase/supabase-js"
 
 interface AuthModalProps {
   isOpen: boolean
   onClose: () => void
-  onAuth: (user: any) => void
+  onAuth: (user: SupabaseUser) => void
   isInitialLoad?: boolean
 }
 
@@ -25,52 +26,71 @@ export default function AuthModal({ isOpen, onClose, onAuth, isInitialLoad = fal
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Create a direct Supabase client
-  const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
+  const supabase = createClient()
 
   if (!isOpen) return null
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    // Mock authentication for email/password
-    const user = {
-      id: "1",
-      name: formData.name || "John Doe",
-      email: formData.email,
-      avatar: null,
-    }
-    onAuth(user)
-    onClose()
-  }
+    setIsLoading(true)
+    setError(null)
 
-  const handleOAuthLogin = async (provider: string) => {
     try {
-      setIsLoading(true)
-      setError(null)
+      if (isLogin) {
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email: formData.email,
+          password: formData.password,
+        })
 
-      if (provider === "google") {
-        console.log("Starting Google OAuth flow...")
-
-        // Use the standard Supabase OAuth flow - now that we're in a proper environment
-        const { data, error } = await supabase.auth.signInWithOAuth({
-          provider: "google",
+        if (error) {
+          setError(error.message)
+        } else if (data.user) {
+          onAuth(data.user)
+          onClose()
+        }
+      } else {
+        const { data, error } = await supabase.auth.signUp({
+          email: formData.email,
+          password: formData.password,
           options: {
-            redirectTo: window.location.origin,
+            data: {
+              full_name: formData.name,
+            },
           },
         })
 
         if (error) {
-          console.error("OAuth error:", error)
-          setError(`OAuth error: ${error.message}`)
-          setIsLoading(false)
-          return
+          setError(error.message)
+        } else if (data.user) {
+          onAuth(data.user)
+          onClose()
         }
-
-        console.log("OAuth initiated successfully:", data)
-        // The redirect will happen automatically
       }
     } catch (err) {
-      console.error("Unexpected error during OAuth:", err)
+      setError(err instanceof Error ? err.message : "An unexpected error occurred")
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleOAuthLogin = async (provider: "google" | "github") => {
+    setIsLoading(true)
+    setError(null)
+
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider,
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+        },
+      })
+
+      if (error) {
+        setError(`OAuth error: ${error.message}`)
+        setIsLoading(false)
+      }
+      // If successful, the redirect will happen automatically
+    } catch (err) {
       setError(`Unexpected error: ${err instanceof Error ? err.message : String(err)}`)
       setIsLoading(false)
     }
@@ -200,8 +220,12 @@ export default function AuthModal({ isOpen, onClose, onAuth, isInitialLoad = fal
               </div>
             </div>
 
-            <Button type="submit" className="w-full h-12 rounded-2xl bg-gradient-to-r from-blue-500 to-purple-600">
-              {isLogin ? "Sign In" : "Create Account"}
+            <Button
+              type="submit"
+              className="w-full h-12 rounded-2xl bg-gradient-to-r from-blue-500 to-purple-600"
+              disabled={isLoading}
+            >
+              {isLoading ? "Loading..." : isLogin ? "Sign In" : "Create Account"}
             </Button>
           </form>
 
