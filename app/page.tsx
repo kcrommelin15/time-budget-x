@@ -61,7 +61,7 @@ export default function TimeBudgetApp() {
     // Listen for auth changes
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!mounted) return
 
       console.log("Auth state changed:", event)
@@ -72,6 +72,11 @@ export default function TimeBudgetApp() {
         setAuthError(null)
       } else if (event === "SIGNED_OUT") {
         setUser(null)
+        // Clear any error state
+        setAuthError(null)
+        // Don't automatically show auth modal on sign out
+      } else if (event === "TOKEN_REFRESHED" && session?.user) {
+        setUser(session.user)
       }
     })
 
@@ -86,8 +91,14 @@ export default function TimeBudgetApp() {
     setShowAuthModal(false)
   }
 
-  const handleLogout = () => {
-    setUser(null)
+  const handleLogout = async () => {
+    try {
+      await supabase.auth.signOut()
+      setUser(null)
+      setAuthError(null)
+    } catch (error) {
+      console.error("Error during logout:", error)
+    }
   }
 
   return (

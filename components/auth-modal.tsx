@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { X, Mail, Lock, User, Github } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -27,6 +27,18 @@ export default function AuthModal({ isOpen, onClose, onAuth, isInitialLoad = fal
   const [error, setError] = useState<string | null>(null)
 
   const supabase = createClient()
+
+  useEffect(() => {
+    // Reset form and error state when modal opens/closes
+    if (isOpen) {
+      setError(null)
+      setIsLoading(false)
+    } else {
+      setFormData({ email: "", password: "", name: "" })
+      setError(null)
+      setIsLoading(false)
+    }
+  }, [isOpen])
 
   if (!isOpen) return null
 
@@ -78,10 +90,17 @@ export default function AuthModal({ isOpen, onClose, onAuth, isInitialLoad = fal
     setError(null)
 
     try {
+      // Clear any existing sessions first
+      await supabase.auth.signOut()
+
       const { error } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
           redirectTo: `${window.location.origin}/auth/callback`,
+          queryParams: {
+            access_type: "offline",
+            prompt: "consent",
+          },
         },
       })
 
