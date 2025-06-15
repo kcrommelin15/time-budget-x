@@ -93,23 +93,36 @@ export default function AuthModal({ isOpen, onClose, onAuth, isInitialLoad = fal
       // Clear any existing sessions first
       await supabase.auth.signOut()
 
+      // Get the current origin for redirect
+      const currentOrigin = window.location.origin
+      const redirectTo = `${currentOrigin}/auth/callback`
+
+      console.log("OAuth login - Provider:", provider)
+      console.log("OAuth login - Redirect URL:", redirectTo)
+      console.log("OAuth login - Current origin:", currentOrigin)
+
       const { error } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
+          redirectTo,
           queryParams: {
             access_type: "offline",
             prompt: "consent",
           },
+          ...(provider === "google" && {
+            scopes: "https://www.googleapis.com/auth/userinfo.email",
+          }),
         },
       })
 
       if (error) {
+        console.error("OAuth error:", error)
         setError(`OAuth error: ${error.message}`)
         setIsLoading(false)
       }
       // If successful, the redirect will happen automatically
     } catch (err) {
+      console.error("Unexpected OAuth error:", err)
       setError(`Unexpected error: ${err instanceof Error ? err.message : String(err)}`)
       setIsLoading(false)
     }

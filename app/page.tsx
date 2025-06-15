@@ -25,6 +25,23 @@ export default function TimeBudgetApp() {
 
     const initializeAuth = async () => {
       try {
+        // Check for auth success/error in URL params
+        const urlParams = new URLSearchParams(window.location.search)
+        const authError = urlParams.get("auth_error")
+        const authSuccess = urlParams.get("auth_success")
+
+        if (authError) {
+          setAuthError(`Authentication failed: ${authError}`)
+          // Clean up URL
+          window.history.replaceState({}, "", window.location.pathname)
+        }
+
+        if (authSuccess) {
+          console.log("Auth success detected in URL")
+          // Clean up URL
+          window.history.replaceState({}, "", window.location.pathname)
+        }
+
         const {
           data: { session },
           error,
@@ -42,8 +59,8 @@ export default function TimeBudgetApp() {
           setUser(session?.user ?? null)
           setIsInitialLoad(false)
 
-          // Only show auth modal on initial load if no user
-          if (!session?.user) {
+          // Only show auth modal on initial load if no user and no auth in progress
+          if (!session?.user && !authSuccess) {
             setShowAuthModal(true)
           }
         }
