@@ -1,10 +1,12 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { LogOut, Slack, Bell, HelpCircle, Trash2, CheckCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
 import AuthModal from "@/components/auth-modal"
+import { createClient } from "@/lib/supabase/client"
+import type { User } from "@supabase/supabase-js"
 
 interface EnhancedSettingsScreenProps {
   user?: any
@@ -12,7 +14,10 @@ interface EnhancedSettingsScreenProps {
   onLogout?: () => void
 }
 
-export default function EnhancedSettingsScreen({ user, onAuth, onLogout }: EnhancedSettingsScreenProps) {
+export default function EnhancedSettingsScreen({ onAuth, onLogout }: EnhancedSettingsScreenProps) {
+  const supabase = createClient()
+  const [currentUser, setCurrentUser] = useState<User | null>(null)
+  const [loadingAuth, setLoadingAuth] = useState(true)
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false)
   const [notifications, setNotifications] = useState({
     push: true,
@@ -26,12 +31,52 @@ export default function EnhancedSettingsScreen({ user, onAuth, onLogout }: Enhan
   })
 
   const handleAuth = (userData: any) => {
-    onAuth?.(userData)
+    // userData from email/pass
+    // For email/password, Supabase onAuthStateChange will also fire.
+    // This prop might be for immediate UI updates if needed.
+    // setCurrentUser(userData as User); // Or let onAuthStateChange handle it
+    if (onAuth) onAuth(userData)
     setIsAuthModalOpen(false)
+  }
+
+  const handleLogout = async () => {
+    const { error } = await supabase.auth.signOut()
+    if (error) {
+      console.error("Error signing out:", error)
+    } else {
+      setCurrentUser(null) // Optimistic update
+      if (onLogout) onLogout()
+    }
   }
 
   // Mock streak data - in real app this would come from user data
   const streakDays = 23
+
+  useEffect(() => {
+    const getSession = async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession()
+      setCurrentUser(session?.user ?? null)
+      setLoadingAuth(false)
+    }
+    getSession()
+
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+      setCurrentUser(session?.user ?? null)
+      setLoadingAuth(false)
+      if (event === "SIGNED_IN" && session?.user && onAuth) {
+        onAuth(session.user)
+      }
+      if (event === "SIGNED_OUT" && onLogout) {
+        onLogout()
+      }
+    })
+
+    return () => {
+      authListener?.subscription.unsubscribe()
+    }
+  }, [supabase, onAuth, onLogout])
 
   return (
     <div className="p-6 pb-20">
@@ -44,7 +89,9 @@ export default function EnhancedSettingsScreen({ user, onAuth, onLogout }: Enhan
       </div>
 
       {/* User Profile Section */}
-      {!user ? (
+      {loadingAuth ? (
+        <p>Loading...</p>
+      ) : !currentUser ? (
         <div className="bg-gradient-to-br from-blue-500 via-purple-600 to-pink-500 rounded-3xl p-12 mb-8 text-center relative overflow-hidden min-h-[300px] flex flex-col justify-center">
           {/* Animated background elements */}
           <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent animate-pulse"></div>
@@ -71,8 +118,10 @@ export default function EnhancedSettingsScreen({ user, onAuth, onLogout }: Enhan
       ) : (
         <div className="flex justify-center mb-8">
           <div className="bg-gradient-to-br from-blue-50 via-purple-50 to-indigo-50 rounded-3xl p-8 border border-blue-100 shadow-lg max-w-md w-full text-center">
-            <h3 className="text-2xl font-bold text-gray-900 mb-2">{user.name}</h3>
-            <p className="text-gray-600 text-lg mb-4">{user.email}</p>
+            <h3 className="text-2xl font-bold text-gray-900 mb-2">
+              {currentUser.user_metadata?.full_name || currentUser.email}
+            </h3>
+            <p className="text-gray-600 text-lg mb-4">{currentUser.email}</p>
             <div className="flex items-center justify-center gap-2">
               <div className="flex items-center gap-1">
                 <span className="text-2xl">🔥</span>
@@ -146,7 +195,7 @@ export default function EnhancedSettingsScreen({ user, onAuth, onLogout }: Enhan
                 <p className="text-sm text-gray-600">Get AI-powered suggestions for better time tracking</p>
               </div>
               <Switch
-                checked={user ? aiEnhancements.smartSuggestions : aiEnhancements.smartSuggestions}
+                checked={currentUser ? aiEnhancements.smartSuggestions : aiEnhancements.smartSuggestions}
                 disabled={false}
                 onCheckedChange={(checked) => setAiEnhancements({ ...aiEnhancements, smartSuggestions: checked })}
               />
@@ -157,7 +206,7 @@ export default function EnhancedSettingsScreen({ user, onAuth, onLogout }: Enhan
                 <p className="text-sm text-gray-600">Automatically fill gaps in your timeline</p>
               </div>
               <Switch
-                checked={user ? aiEnhancements.autoGapFilling : aiEnhancements.autoGapFilling}
+                checked={currentUser ? aiEnhancements.autoGapFilling : aiEnhancements.autoGapFilling}
                 disabled={false}
                 onCheckedChange={(checked) => setAiEnhancements({ ...aiEnhancements, autoGapFilling: checked })}
               />
@@ -168,7 +217,7 @@ export default function EnhancedSettingsScreen({ user, onAuth, onLogout }: Enhan
                 <p className="text-sm text-gray-600">Automatically categorize manual entries</p>
               </div>
               <Switch
-                checked={user ? aiEnhancements.autoCategorizeText : aiEnhancements.autoCategorizeText}
+                checked={currentUser ? aiEnhancements.autoCategorizeText : aiEnhancements.autoCategorizeText}
                 disabled={false}
                 onCheckedChange={(checked) => setAiEnhancements({ ...aiEnhancements, autoCategorizeText: checked })}
               />
@@ -179,7 +228,9 @@ export default function EnhancedSettingsScreen({ user, onAuth, onLogout }: Enhan
                 <p className="text-sm text-gray-600">Smart categorization from Slack, Trello, etc.</p>
               </div>
               <Switch
-                checked={user ? aiEnhancements.autoCategorizeIntegrations : aiEnhancements.autoCategorizeIntegrations}
+                checked={
+                  currentUser ? aiEnhancements.autoCategorizeIntegrations : aiEnhancements.autoCategorizeIntegrations
+                }
                 disabled={false}
                 onCheckedChange={(checked) =>
                   setAiEnhancements({ ...aiEnhancements, autoCategorizeIntegrations: checked })
@@ -192,7 +243,7 @@ export default function EnhancedSettingsScreen({ user, onAuth, onLogout }: Enhan
                 <p className="text-sm text-gray-600">Deep analytics and productivity patterns</p>
               </div>
               <Switch
-                checked={user ? aiEnhancements.advancedInsights : aiEnhancements.advancedInsights}
+                checked={currentUser ? aiEnhancements.advancedInsights : aiEnhancements.advancedInsights}
                 disabled={false}
                 onCheckedChange={(checked) => setAiEnhancements({ ...aiEnhancements, advancedInsights: checked })}
               />
@@ -242,10 +293,10 @@ export default function EnhancedSettingsScreen({ user, onAuth, onLogout }: Enhan
       </div>
 
       {/* Sign Out */}
-      {user && (
+      {currentUser && (
         <div className="mt-8">
           <Button
-            onClick={onLogout}
+            onClick={handleLogout}
             variant="outline"
             className="w-full h-12 rounded-2xl border-red-200 text-red-600 hover:bg-red-50"
           >
@@ -256,7 +307,7 @@ export default function EnhancedSettingsScreen({ user, onAuth, onLogout }: Enhan
       )}
 
       {/* Delete Account - Only show when signed in */}
-      {user && (
+      {currentUser && (
         <div className="mt-16 pt-8 border-t border-gray-200">
           <Button
             variant="ghost"
@@ -268,7 +319,12 @@ export default function EnhancedSettingsScreen({ user, onAuth, onLogout }: Enhan
         </div>
       )}
 
-      <AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} onAuth={handleAuth} />
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        onAuth={handleAuth}
+        isInitialLoad={false}
+      />
     </div>
   )
 }
