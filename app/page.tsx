@@ -10,7 +10,6 @@ import FloatingToggle from "@/components/floating-toggle"
 import AuthModal from "@/components/auth-modal"
 import { createClient } from "@/lib/supabase/client"
 import type { User } from "@supabase/supabase-js"
-import { dataService } from "@/lib/data-service"
 
 export default function TimeBudgetApp() {
   const [activeScreen, setActiveScreen] = useState<"budget" | "timeline" | "insights" | "settings">("budget")
@@ -75,7 +74,6 @@ export default function TimeBudgetApp() {
 
         if (mounted) {
           setUser(session?.user ?? null)
-          dataService.setUser(session?.user ?? null)
           setIsInitialLoad(false)
 
           // Only show auth modal on initial load if no user and no auth in progress
@@ -104,19 +102,16 @@ export default function TimeBudgetApp() {
 
       if (event === "SIGNED_IN" && session?.user) {
         setUser(session.user)
-        dataService.setUser(session.user)
         setShowAuthModal(false)
         setAuthError(null)
       } else if (event === "SIGNED_OUT") {
         setUser(null)
-        dataService.setUser(null)
         // Clear any error state
         setAuthError(null)
         setVerificationMessage(null)
         // Don't automatically show auth modal on sign out
       } else if (event === "TOKEN_REFRESHED" && session?.user) {
         setUser(session.user)
-        dataService.setUser(session.user)
       }
     })
 
@@ -128,7 +123,6 @@ export default function TimeBudgetApp() {
 
   const handleAuth = (userData: User) => {
     setUser(userData)
-    dataService.setUser(userData)
     setShowAuthModal(false)
   }
 
@@ -136,7 +130,6 @@ export default function TimeBudgetApp() {
     try {
       await supabase.auth.signOut()
       setUser(null)
-      dataService.setUser(null)
       setAuthError(null)
       setVerificationMessage(null)
     } catch (error) {
@@ -171,7 +164,7 @@ export default function TimeBudgetApp() {
         {/* Desktop Layout - Single Page */}
         <div className="hidden lg:block min-h-screen">
           <div className="max-w-4xl mx-auto relative">
-            {activeScreen === "budget" && <BudgetScreen isDesktop={true} />}
+            {activeScreen === "budget" && <BudgetScreen isDesktop={true} user={user} />}
             {activeScreen === "timeline" && <TimelineScreen isDesktop={true} />}
             {activeScreen === "insights" && <EnhancedInsightsScreen />}
             {activeScreen === "settings" && (
@@ -182,7 +175,7 @@ export default function TimeBudgetApp() {
 
         {/* Mobile Layout */}
         <div className="lg:hidden max-w-md mx-auto bg-white/60 backdrop-blur-xl min-h-screen relative rounded-t-3xl mt-4 shadow-2xl border border-white/40 overflow-hidden">
-          {activeScreen === "budget" && <BudgetScreen />}
+          {activeScreen === "budget" && <BudgetScreen user={user} />}
           {activeScreen === "timeline" && <TimelineScreen />}
           {activeScreen === "insights" && <EnhancedInsightsScreen />}
           {activeScreen === "settings" && (
