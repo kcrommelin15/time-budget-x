@@ -30,8 +30,8 @@ export class TimeEntriesService {
       categoryId: entry.category_id,
       categoryName: entry.categories.name,
       categoryColor: entry.categories.color,
-      startTime: entry.start_time,
-      endTime: entry.end_time,
+      startTime: this.formatTimeFromDB(entry.start_time),
+      endTime: this.formatTimeFromDB(entry.end_time),
       description: entry.description || "",
       date: entry.date,
       status: entry.status || "confirmed",
@@ -60,14 +60,24 @@ export class TimeEntriesService {
       throw new Error("Invalid category selected")
     }
 
+    // Convert time strings to proper timestamp format
+    const startTimestamp = this.formatTimeForDB(entry.startTime, entry.date)
+    const endTimestamp = this.formatTimeForDB(entry.endTime, entry.date)
+
+    console.log("Inserting time entry:", {
+      start_time: startTimestamp,
+      end_time: endTimestamp,
+      date: entry.date,
+    })
+
     // Insert the time entry
     const { data, error } = await supabase
       .from("time_entries")
       .insert({
         user_id: userData.user.id,
         category_id: entry.categoryId,
-        start_time: entry.startTime,
-        end_time: entry.endTime,
+        start_time: startTimestamp,
+        end_time: endTimestamp,
         description: entry.description || "",
         date: entry.date,
         status: entry.status || "confirmed",
@@ -89,8 +99,8 @@ export class TimeEntriesService {
       categoryId: data.category_id,
       categoryName: categoryData.name,
       categoryColor: categoryData.color,
-      startTime: data.start_time,
-      endTime: data.end_time,
+      startTime: this.formatTimeFromDB(data.start_time),
+      endTime: this.formatTimeFromDB(data.end_time),
       description: data.description || "",
       date: data.date,
       status: data.status || "confirmed",
@@ -106,12 +116,16 @@ export class TimeEntriesService {
     const { data: userData } = await supabase.auth.getUser()
     if (!userData.user) throw new Error("User not authenticated")
 
+    // Convert time strings to proper timestamp format
+    const startTimestamp = this.formatTimeForDB(entry.startTime, entry.date)
+    const endTimestamp = this.formatTimeForDB(entry.endTime, entry.date)
+
     const { error } = await supabase
       .from("time_entries")
       .update({
         category_id: entry.categoryId,
-        start_time: entry.startTime,
-        end_time: entry.endTime,
+        start_time: startTimestamp,
+        end_time: endTimestamp,
         description: entry.description,
         status: entry.status,
         subcategory: entry.subcategory,
@@ -161,8 +175,8 @@ export class TimeEntriesService {
     const categoryTimes: Record<string, number> = {}
 
     data.forEach((entry) => {
-      const startTime = new Date(`1970-01-01T${entry.start_time}:00`)
-      const endTime = new Date(`1970-01-01T${entry.end_time}:00`)
+      const startTime = new Date(entry.start_time)
+      const endTime = new Date(entry.end_time)
       const durationMinutes = (endTime.getTime() - startTime.getTime()) / (1000 * 60)
 
       if (categoryTimes[entry.category_id]) {
@@ -199,5 +213,18 @@ export class TimeEntriesService {
     }
 
     return true
+  }
+
+  // Helper method to format time for database (HH:MM -> YYYY-MM-DD HH:MM:SS+TZ)
+  private static formatTimeForDB(timeString: string, dateString: string): string {
+    // Create a full timestamp by combining date and time
+    const fullTimestamp = `${dateString}T${timeString}:00`
+    return new Date(fullTimestamp).toISOString()
+  }
+
+  // Helper method to format time from database (timestamp -> HH:MM)
+  private static formatTimeFromDB(timestamp: string): string {
+    const date = new Date(timestamp)
+    return date.toTimeString().slice(0, 5) // Extract HH:MM
   }
 }
