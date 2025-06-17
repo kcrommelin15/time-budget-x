@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
-import { Calendar, Plus, ChevronDown } from "lucide-react"
+import { Plus } from "lucide-react"
 import AddTimeEntryModal from "@/components/add-time-entry-modal"
 import TrackingPreferencesModal from "@/components/tracking-preferences-modal"
 import SimpleDatePickerModal from "@/components/simple-date-picker-modal"
@@ -9,7 +9,6 @@ import { useTimeEntries } from "@/hooks/use-time-entries"
 import { useCategories } from "@/hooks/use-categories"
 import type { User } from "@supabase/supabase-js"
 import EnhancedBottomTrackingWidget from "@/components/enhanced-bottom-tracking-widget"
-import ZoomableTimeBlock from "@/components/zoomable-time-block"
 
 interface TimelineScreenProps {
   isDesktop?: boolean
@@ -219,23 +218,12 @@ export default function TimelineScreen({ isDesktop = false, user }: TimelineScre
   }
 
   return (
-    <>
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
       <div className="sticky top-0 z-30 bg-gradient-to-br from-gray-50 via-white to-gray-100 border-b border-gray-200/60 backdrop-blur-xl">
         <div className="p-6 pb-4">
           <div className="flex items-center gap-3 mb-4">
             <h1 className="text-3xl font-bold text-gray-900">{formatDate(selectedDate)}</h1>
-            <button
-              onClick={() => setIsDatePickerOpen(true)}
-              className="flex items-center justify-center w-8 h-8 bg-white border border-gray-300 rounded-full shadow-sm hover:bg-gray-50"
-            >
-              <ChevronDown className="w-4 h-4" />
-            </button>
-            <button
-              onClick={() => setIsPreferencesOpen(true)}
-              className="flex items-center justify-center w-8 h-8 bg-white border border-gray-300 rounded-full shadow-sm hover:bg-gray-50"
-            >
-              <Calendar className="w-4 h-4" />
-            </button>
             <button
               onClick={() => setIsAddModalOpen(true)}
               className="flex items-center gap-2 px-3 py-2 bg-white border border-gray-300 rounded-full shadow-sm hover:bg-gray-50"
@@ -247,61 +235,38 @@ export default function TimelineScreen({ isDesktop = false, user }: TimelineScre
         </div>
       </div>
 
-      <div ref={timelineRef} className="overflow-y-auto overflow-x-hidden" style={{ height: timelineHeight }}>
-        {loading ? (
-          <div className="flex items-center justify-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-          </div>
-        ) : error ? (
-          <div className="text-center py-8">
-            <p className="text-red-600">Error: {error}</p>
-          </div>
-        ) : (
-          <div className="p-6 pt-2 space-y-1" style={{ paddingBottom: isDesktop ? "24px" : "32px" }}>
-            {timeSlots.map((time, index) => {
-              const occupyingEntry = occupiedSlots.get(time)
-              const isFirstSlotOfEntry = occupyingEntry && entrySpans.get(occupyingEntry.id)?.[0] === time
-              const entrySlotCount = occupyingEntry ? entrySpans.get(occupyingEntry.id)?.length || 1 : 1
-
-              return (
-                <div key={time} className="flex items-start" style={{ minHeight: `${slotHeight}px` }}>
-                  <div
-                    className={`text-gray-500 font-mono font-medium pt-2 flex-shrink-0 ${
-                      zoomLevel <= 0.5 ? "w-12 text-xs" : zoomLevel <= 0.8 ? "w-14 text-sm" : "w-16 text-sm"
-                    }`}
-                  >
-                    {zoomLevel <= 0.5 ? time.split(":")[0] : time}
-                  </div>
-                  <div className="flex-1 ml-4">
-                    {occupyingEntry && isFirstSlotOfEntry ? (
-                      <ZoomableTimeBlock
-                        entry={convertEntryForUI(occupyingEntry)}
-                        onEdit={handleEditTimeEntry}
-                        onDelete={handleDeleteTimeEntry}
-                        zoomLevel={zoomLevel}
-                        slotHeight={slotHeight * entrySlotCount + (entrySlotCount - 1) * 4}
-                      />
-                    ) : occupyingEntry ? (
-                      <div style={{ height: `${slotHeight - 8}px` }} />
-                    ) : (
-                      <div
-                        className="border-l-2 border-gray-200 hover:border-gray-400 cursor-pointer transition-all duration-200 rounded-r-lg hover:bg-gray-50 flex items-center pl-4"
-                        style={{ height: `${slotHeight - 8}px` }}
-                        onClick={() => handleTimeSlotClick(time)}
-                      >
-                        {zoomLevel >= 0.8 && (
-                          <span className="text-gray-400 text-sm opacity-0 hover:opacity-100 transition-opacity">
-                            + Add entry
-                          </span>
-                        )}
-                      </div>
-                    )}
+      {/* Timeline Content */}
+      <div className="p-6">
+        <div className="space-y-2">
+          {Array.from({ length: 17 }, (_, i) => {
+            const hour = i + 6
+            const timeString = `${hour.toString().padStart(2, "0")}:00`
+            return (
+              <div key={timeString} className="flex items-center gap-4 min-h-[60px]">
+                <div className="w-16 text-sm font-mono text-gray-500 flex-shrink-0">{timeString}</div>
+                <div className="flex-1">
+                  <div className="border-l-2 border-gray-200 hover:border-gray-400 cursor-pointer transition-all duration-200 rounded-r-lg hover:bg-gray-50 flex items-center pl-4 h-12">
+                    <span className="text-gray-400 text-sm opacity-0 hover:opacity-100 transition-opacity">
+                      + Add entry
+                    </span>
                   </div>
                 </div>
-              )
-            })}
-          </div>
-        )}
+              </div>
+            )
+          })}
+        </div>
+      </div>
+
+      {/* Footer Widget */}
+      <div className="sticky bottom-0 z-30 bg-white border-t border-gray-200 p-4">
+        <div className="flex items-center gap-3">
+          <input
+            type="text"
+            placeholder="What are you working on?"
+            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Start</button>
+        </div>
       </div>
 
       <AddTimeEntryModal
@@ -332,6 +297,6 @@ export default function TimelineScreen({ isDesktop = false, user }: TimelineScre
           categories={categories}
         />
       </div>
-    </>
+    </div>
   )
 }
