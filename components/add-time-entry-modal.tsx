@@ -8,17 +8,23 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { mockCategories } from "@/lib/mock-data"
-import type { TimeEntry } from "@/lib/types"
+import type { TimeEntry, Category } from "@/lib/types"
 
 interface AddTimeEntryModalProps {
   isOpen: boolean
   onClose: () => void
   onAdd: (entry: Omit<TimeEntry, "id">) => void
   prefilledEntry?: { startTime: string; endTime: string } | null
+  categories: Category[]
 }
 
-export default function AddTimeEntryModal({ isOpen, onClose, onAdd, prefilledEntry }: AddTimeEntryModalProps) {
+export default function AddTimeEntryModal({
+  isOpen,
+  onClose,
+  onAdd,
+  prefilledEntry,
+  categories,
+}: AddTimeEntryModalProps) {
   const [selectedCategory, setSelectedCategory] = useState("")
   const [selectedSubcategory, setSelectedSubcategory] = useState("")
 
@@ -46,22 +52,24 @@ export default function AddTimeEntryModal({ isOpen, onClose, onAdd, prefilledEnt
 
   if (!isOpen) return null
 
-  const selectedCat = mockCategories.find((c) => c.id === selectedCategory)
+  const selectedCat = categories.find((c) => c.id === selectedCategory)
   const subcategories = selectedCat?.subcategories || []
 
   const onSubmit = (data: any) => {
-    const category = mockCategories.find((c) => c.id === selectedCategory)
+    const category = categories.find((c) => c.id === selectedCategory)
     if (!category) return
 
     onAdd({
       categoryId: selectedCategory,
       categoryName: category.name,
       categoryColor: category.color,
+      subcategory: selectedSubcategory || undefined,
       startTime: data.startTime,
       endTime: data.endTime,
       description: data.description || "",
       date: new Date().toISOString().split("T")[0],
       status: "confirmed",
+      source: "manual",
     })
     reset()
     setSelectedCategory("")
@@ -98,7 +106,7 @@ export default function AddTimeEntryModal({ isOpen, onClose, onAdd, prefilledEnt
                 <SelectValue placeholder="Select a category" />
               </SelectTrigger>
               <SelectContent>
-                {mockCategories.map((category) => (
+                {categories.map((category) => (
                   <SelectItem key={category.id} value={category.id}>
                     <div className="flex items-center gap-2">
                       <div className="w-3 h-3 rounded-full" style={{ backgroundColor: category.color }}></div>
@@ -109,6 +117,11 @@ export default function AddTimeEntryModal({ isOpen, onClose, onAdd, prefilledEnt
               </SelectContent>
             </Select>
             {!selectedCategory && <p className="text-sm text-red-500 mt-1">Please select a category</p>}
+            {categories.length === 0 && (
+              <p className="text-sm text-gray-500 mt-1">
+                No categories available. Create some categories first in the Budget screen.
+              </p>
+            )}
           </div>
 
           {subcategories.length > 0 && (

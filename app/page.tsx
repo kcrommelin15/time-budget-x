@@ -165,7 +165,7 @@ export default function TimeBudgetApp() {
         <div className="hidden lg:block min-h-screen">
           <div className="max-w-4xl mx-auto relative">
             {activeScreen === "budget" && <BudgetScreen isDesktop={true} user={user} />}
-            {activeScreen === "timeline" && <TimelineScreen isDesktop={true} />}
+            {activeScreen === "timeline" && <TimelineScreen isDesktop={true} user={user} />}
             {activeScreen === "insights" && <EnhancedInsightsScreen />}
             {activeScreen === "settings" && (
               <EnhancedSettingsScreen user={user} onAuth={handleAuth} onLogout={handleLogout} />
@@ -176,7 +176,7 @@ export default function TimeBudgetApp() {
         {/* Mobile Layout */}
         <div className="lg:hidden max-w-md mx-auto bg-white/60 backdrop-blur-xl min-h-screen relative rounded-t-3xl mt-4 shadow-2xl border border-white/40 overflow-hidden">
           {activeScreen === "budget" && <BudgetScreen user={user} />}
-          {activeScreen === "timeline" && <TimelineScreen />}
+          {activeScreen === "timeline" && <TimelineScreen user={user} />}
           {activeScreen === "insights" && <EnhancedInsightsScreen />}
           {activeScreen === "settings" && (
             <EnhancedSettingsScreen user={user} onAuth={handleAuth} onLogout={handleLogout} />

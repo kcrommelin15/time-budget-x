@@ -6,12 +6,15 @@ const supabase = createClient()
 export class DataService {
   // Categories
   static async getCategories(): Promise<Category[]> {
+    // Update time usage first
+    await this.updateCategoryTimeUsage()
+
     const { data: categoriesData, error: categoriesError } = await supabase
       .from("categories")
       .select(`
-        *,
-        subcategories (*)
-      `)
+      *,
+      subcategories (*)
+    `)
       .order("created_at", { ascending: true })
 
     if (categoriesError) {
@@ -215,5 +218,60 @@ export class DataService {
 
     // Don't create any default categories - let users start fresh
     console.log("User initialized with empty categories")
+  }
+
+  // Update category time usage based on time entries
+  static async updateCategoryTimeUsage(): Promise<void> {
+    const { data: userData } = await supabase.auth.getUser()
+    if (!userData.user) throw new Error("User not authenticated")
+
+    // Get current week's start and end dates
+    const now = new Date()
+    const startOfWeek = new Date(now.setDate(now.getDate() - now.getDay()))
+    const endOfWeek = new Date(now.setDate(now.getDate() - now.getDay() + 6))
+
+    const startDate = startOfWeek.toISOString().split("T")[0]
+    const endDate = endOfWeek.toISOString().split("T")[0]
+
+    // Get time spent by category this week
+    const { data: timeEntries, error } = await supabase
+      .from("time_entries")
+      .select("category_id, start_time, end_time")
+      .eq("user_id", userData.user.id)
+      .gte("date", startDate)
+      .lte("date", endDate)
+
+    if (error) {
+      console.error("Error fetching time entries for calculation:", error)
+      return
+    }
+
+    // Calculate time spent per category
+    const timeSpent: Record<string, number> = {}
+
+    timeEntries.forEach((entry) => {
+      const startMinutes = this.timeToMinutes(entry.start_time)
+      const endMinutes = this.timeToMinutes(entry.end_time)
+      const duration = endMinutes - startMinutes
+
+      if (!timeSpent[entry.category_id]) {
+        timeSpent[entry.category_id] = 0
+      }
+      timeSpent[entry.category_id] += duration
+    })
+
+    // Update each category's time_used
+    for (const [categoryId, minutes] of Object.entries(timeSpent)) {
+      await supabase
+        .from("categories")
+        .update({ time_used: minutes })
+        .eq("id", categoryId)
+        .eq("user_id", userData.user.id)
+    }
+  }
+
+  private static timeToMinutes(timeString: string): number {
+    const [hours, minutes] = timeString.split(":").map(Number)
+    return hours * 60 + minutes
   }
 }
