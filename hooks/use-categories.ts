@@ -228,6 +228,19 @@ export function useCategories(user: User | null) {
     }
   }
 
+  const refreshTimeUsage = async () => {
+    if (!user) return
+
+    try {
+      await DataService.updateCategoryTimeUsage()
+      await loadUserCategories() // Reload categories with updated time usage
+    } catch (err) {
+      console.error("Error refreshing time usage:", err)
+      setError(err instanceof Error ? err.message : "Failed to refresh time usage")
+    }
+  }
+
+  // Add refreshTimeUsage to the return object
   return {
     categories,
     archivedCategories,
@@ -243,5 +256,6 @@ export function useCategories(user: User | null) {
     updateSubcategory,
     deleteSubcategory,
     refreshCategories: loadUserCategories,
+    refreshTimeUsage, // Add this line
   }
 }

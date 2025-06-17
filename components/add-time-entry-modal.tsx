@@ -1,123 +1,246 @@
 "use client"
 
-```tsx file="components/enhanced-bottom-tracking-widget.tsx"
-[v0-no-op-code-block-prefix]import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from "react"
+import { useForm } from "react-hook-form"
+import { X, Clock } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { useCategories } from "@/hooks/use-categories"
+import type { TimeEntry } from "@/lib/types"
+import type { User } from "@supabase/supabase-js"
 
-interface EnhancedBottomTrackingWidgetProps {
-  validateActivity: (activity: string) => Promise<{ categoryId: string | null; subcategoryName: string | null }>;
-  createTimeEntry: (entry: any) => Promise<any>;
+// Update the interface to include user and onTimeUsageUpdate
+interface AddTimeEntryModalProps {
+  isOpen: boolean
+  onClose: () => void
+  onAdd: (entry: Omit<TimeEntry, "id">) => Promise<void>
+  prefilledEntry?: { startTime: string; endTime: string } | null
+  user?: User | null
+  onTimeUsageUpdate?: () => void
 }
 
-const EnhancedBottomTrackingWidget: React.FC<EnhancedBottomTrackingWidgetProps> = ({ validateActivity, createTimeEntry }) => {
-  const [currentActivity, setCurrentActivity] = useState('');
-  const [startTime, setStartTime] = useState<Date | null>(null);
-  const [endTime, setEndTime] = useState<Date | null>(null);
-  const [isRunning, setIsRunning] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+// Update the component signature
+export default function AddTimeEntryModal({
+  isOpen,
+  onClose,
+  onAdd,
+  prefilledEntry,
+  user,
+  onTimeUsageUpdate,
+}: AddTimeEntryModalProps) {
+  const [selectedCategory, setSelectedCategory] = useState("")
+  const [selectedSubcategory, setSelectedSubcategory] = useState("")
+  const [validationError, setValidationError] = useState<string | null>(null)
+  const { categories } = useCategories(user) // Moved hook to the top level
+
+  const [selectedCat, setSelectedCat] = useState(null)
+  const [subcategories, setSubcategories] = useState([])
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    setValue,
+    formState: { errors },
+  } = useForm({
+    defaultValues: {
+      startTime: "",
+      endTime: "",
+      description: "",
+    },
+  })
+
+  // Update form when prefilledEntry changes
+  useEffect(() => {
+    if (prefilledEntry) {
+      setValue("startTime", prefilledEntry.startTime)
+      setValue("endTime", prefilledEntry.endTime)
+    }
+  }, [prefilledEntry, setValue])
 
   useEffect(() => {
-    let intervalId: NodeJS.Timeout | null = null;
-
-    if (isRunning) {
-      if (!startTime) {
-        setStartTime(new Date());
-      }
-      intervalId = setInterval(() => {
-        setEndTime(new Date());
-      }, 1000);
+    if (selectedCategory) {
+      const cat = categories.find((c) => c.id === selectedCategory)
+      setSelectedCat(cat)
+      setSubcategories(cat?.subcategories || [])
     } else {
-      if (intervalId) {
-        clearInterval(intervalId);
+      setSelectedCat(null)
+      setSubcategories([])
+    }
+  }, [selectedCategory, categories])
+
+  if (!isOpen) return null
+
+  // Update the onSubmit function to include validation
+  const onSubmit = async (data: any) => {
+    const category = categories.find((c) => c.id === selectedCategory)
+    if (!category) {
+      setValidationError("Please select a valid category")
+      return
+    }
+
+    // Validate subcategory if provided
+    if (selectedSubcategory && subcategories.length > 0) {
+      const validSubcategory = subcategories.find((sub) => sub.name === selectedSubcategory)
+      if (!validSubcategory) {
+        setValidationError("Please select a valid activity")
+        return
       }
     }
 
-    return () => {
-      if (intervalId) {
-        clearInterval(intervalId);
-      }
-    };
-  }, [isRunning]);
+    setValidationError(null)
 
-  const handleStartStop = async () => {
-    if (!isRunning) {
-      setIsRunning(true);
-      setErrorMessage(null);
-    } else {
-      setIsRunning(false);
-      if (!startTime) {
-        console.error("Start time is not set.");
-        setErrorMessage("Start time is not set.");
-        return;
-      }
+    try {
+      await onAdd({
+        categoryId: selectedCategory,
+        categoryName: category.name,
+        categoryColor: category.color,
+        startTime: data.startTime,
+        endTime: data.endTime,
+        description: data.description || "",
+        subcategory: selectedSubcategory || undefined,
+        date: new Date().toISOString().split("T")[0],
+        status: "confirmed",
+      })
 
-      if (!endTime) {
-        console.error("End time is not set.");
-        setErrorMessage("End time is not set.");
-        return;
+      // Refresh time usage after adding entry
+      if (onTimeUsageUpdate) {
+        onTimeUsageUpdate()
       }
 
-      try {
-        // Update validation call
-        const validation = await validateActivity(currentActivity)
-
-        if (!validation.categoryId) {
-          setErrorMessage("Invalid activity. Please provide a valid activity.");
-          return;
-        }
-
-        // Update time entry creation
-        const newEntry = {
-          category_id: validation.categoryId!,
-          subcategory_name: validation.subcategoryName,
-          start_time: startTime,
-          end_time: endTime,
-          date: new Date().toISOString().split('T')[0],
-          description: currentActivity,
-          source: "live_tracking"
-        }
-
-        await createTimeEntry(newEntry);
-        setCurrentActivity('');
-        setStartTime(null);
-        setEndTime(null);
-      } catch (error: any) {
-        console.error("Error creating time entry:", error);
-        setErrorMessage("Failed to create time entry.");
-      }
+      reset()
+      setSelectedCategory("")
+      setSelectedSubcategory("")
+    } catch (error) {
+      setValidationError(error instanceof Error ? error.message : "Failed to add time entry")
     }
-  };
+  }
+
+  const handleClose = () => {
+    reset()
+    setSelectedCategory("")
+    setSelectedSubcategory("")
+    onClose()
+  }
 
   return (
-    <div style={{ padding: '20px', border: '1px solid #ccc', borderRadius: '5px', marginBottom: '20px' }}>
-      <h3>Live Activity Tracking</h3>
-      {errorMessage && <div style={{ color: 'red', marginBottom: '10px' }}>{errorMessage}</div>}
-      <input
-        type="text"
-        placeholder="Enter activity description"
-        value={currentActivity}
-        onChange={(e) => setCurrentActivity(e.target.value)}
-        style={{ width: '100%', padding: '8px', marginBottom: '10px', boxSizing: 'border-box' }}
-      />
-      <button
-        onClick={handleStartStop}
-        style={{
-          backgroundColor: isRunning ? 'red' : 'green',
-          color: 'white',
-          padding: '10px 15px',
-          border: 'none',
-          borderRadius: '5px',
-          cursor: 'pointer',
-        }}
-      >
-        {isRunning ? 'Stop Tracking' : 'Start Tracking'}
-      </button>
-      {startTime && endTime && (
-        <p>
-          Time elapsed: {Math.floor((endTime.getTime() - startTime.getTime()) / 1000)} seconds
-        </p>
-      )}
-    </div>
-  );
-};
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+      <div className="bg-white rounded-3xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between p-6 border-b border-gray-100">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center">
+              <Clock className="w-5 h-5 text-white" />
+            </div>
+            <h2 className="text-xl font-semibold">Add Time Entry</h2>
+          </div>
+          <Button variant="ghost" size="sm" onClick={handleClose} className="rounded-xl">
+            <X className="w-4 h-4" />
+          </Button>
+        </div>
 
-export default EnhancedBottomTrackingWidget;
+        <form onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-6">
+          <div>
+            <Label className="text-base font-medium">Category</Label>
+            <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+              <SelectTrigger className="rounded-xl mt-2 h-12">
+                <SelectValue placeholder="Select a category" />
+              </SelectTrigger>
+              <SelectContent>
+                {categories.map((category) => (
+                  <SelectItem key={category.id} value={category.id}>
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full" style={{ backgroundColor: category.color }}></div>
+                      {category.name}
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {!selectedCategory && <p className="text-sm text-red-500 mt-1">Please select a category</p>}
+            {validationError && (
+              <div className="text-sm text-red-500 mt-2 p-2 bg-red-50 rounded-lg">{validationError}</div>
+            )}
+          </div>
+
+          {subcategories.length > 0 && (
+            <div>
+              <Label className="text-base font-medium">Activity (optional)</Label>
+              <Select value={selectedSubcategory} onValueChange={setSelectedSubcategory}>
+                <SelectTrigger className="rounded-xl mt-2 h-12">
+                  <SelectValue placeholder="Select an activity" />
+                </SelectTrigger>
+                <SelectContent>
+                  {subcategories.map((sub) => (
+                    <SelectItem key={sub.name} value={sub.name}>
+                      <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: selectedCat?.color }}></div>
+                        {sub.name}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="startTime" className="text-base font-medium">
+                Start Time
+              </Label>
+              <Input
+                id="startTime"
+                type="time"
+                {...register("startTime", { required: "Start time is required" })}
+                className="rounded-xl mt-2 h-12"
+              />
+              {errors.startTime && <p className="text-sm text-red-500 mt-1">{errors.startTime.message as string}</p>}
+            </div>
+
+            <div>
+              <Label htmlFor="endTime" className="text-base font-medium">
+                End Time
+              </Label>
+              <Input
+                id="endTime"
+                type="time"
+                {...register("endTime", { required: "End time is required" })}
+                className="rounded-xl mt-2 h-12"
+              />
+              {errors.endTime && <p className="text-sm text-red-500 mt-1">{errors.endTime.message as string}</p>}
+            </div>
+          </div>
+
+          <div>
+            <Label htmlFor="description" className="text-base font-medium">
+              Description (optional)
+            </Label>
+            <Textarea
+              id="description"
+              {...register("description")}
+              placeholder="What did you work on?"
+              rows={3}
+              className="rounded-xl mt-2 resize-none"
+            />
+          </div>
+
+          <div className="flex gap-3 pt-4">
+            <Button type="button" variant="outline" onClick={handleClose} className="flex-1 rounded-2xl h-12">
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              className="flex-1 rounded-2xl h-12 bg-gradient-to-r from-blue-500 to-purple-600"
+              disabled={!selectedCategory}
+            >
+              Add Entry
+            </Button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}

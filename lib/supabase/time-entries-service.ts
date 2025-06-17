@@ -1,77 +1,78 @@
 import { createClient } from "./client"
+import type { TimeEntry } from "../types"
 
-export type TimeEntry = {
-  id: string
-  user_id: string
-  category_id: string
-  subcategory_name?: string
-  start_time: string
-  end_time: string
-  date: string
-  description?: string
-  notes?: string
-  source: string
-  status: string
-  created_at: string
-  updated_at: string
-}
+const supabase = createClient()
 
-export type CreateTimeEntryData = {
-  category_id: string
-  subcategory_name?: string
-  start_time: string
-  end_time: string
-  date: string
-  description?: string
-  notes?: string
-  source?: string
-}
+export class TimeEntriesService {
+  // Get time entries for a specific date
+  static async getTimeEntriesForDate(date: string): Promise<TimeEntry[]> {
+    const { data: userData } = await supabase.auth.getUser()
+    if (!userData.user) throw new Error("User not authenticated")
 
-export type UpdateTimeEntryData = Partial<CreateTimeEntryData>
-
-class TimeEntriesService {
-  private supabase = createClient()
-
-  async getTimeEntries(date?: string): Promise<TimeEntry[]> {
-    let query = this.supabase.from("time_entries").select("*").order("start_time", { ascending: true })
-
-    if (date) {
-      query = query.eq("date", date)
-    }
-
-    const { data, error } = await query
+    const { data, error } = await supabase
+      .from("time_entries")
+      .select(`
+        *,
+        categories!inner(name, color)
+      `)
+      .eq("user_id", userData.user.id)
+      .eq("date", date)
+      .order("start_time", { ascending: true })
 
     if (error) {
       console.error("Error fetching time entries:", error)
       throw error
     }
 
-    return data || []
+    // Transform database format to app format
+    return data.map((entry) => ({
+      id: entry.id,
+      categoryId: entry.category_id,
+      categoryName: entry.categories.name,
+      categoryColor: entry.categories.color,
+      startTime: entry.start_time,
+      endTime: entry.end_time,
+      description: entry.description || "",
+      date: entry.date,
+      status: entry.status || "confirmed",
+      subcategory: entry.subcategory || undefined,
+      notes: entry.notes || undefined,
+      source: entry.source || "manual",
+      approved: entry.approved || true,
+    }))
   }
 
-  async getTimeEntriesForDateRange(startDate: string, endDate: string): Promise<TimeEntry[]> {
-    const { data, error } = await this.supabase
-      .from("time_entries")
-      .select("*")
-      .gte("date", startDate)
-      .lte("date", endDate)
-      .order("date", { ascending: true })
-      .order("start_time", { ascending: true })
+  // Create a new time entry
+  static async createTimeEntry(entry: Omit<TimeEntry, "id">): Promise<TimeEntry> {
+    const { data: userData } = await supabase.auth.getUser()
+    if (!userData.user) throw new Error("User not authenticated")
 
-    if (error) {
-      console.error("Error fetching time entries for date range:", error)
-      throw error
+    // Get category info for the response
+    const { data: categoryData, error: categoryError } = await supabase
+      .from("categories")
+      .select("name, color")
+      .eq("id", entry.categoryId)
+      .single()
+
+    if (categoryError) {
+      console.error("Error fetching category:", categoryError)
+      throw new Error("Invalid category selected")
     }
 
-    return data || []
-  }
-
-  async createTimeEntry(data: CreateTimeEntryData): Promise<TimeEntry> {
-    const { data: result, error } = await this.supabase
+    const { data, error } = await supabase
       .from("time_entries")
       .insert({
-        ...data,
-        source: data.source || "manual",
+        user_id: userData.user.id,
+        category_id: entry.categoryId,
+        start_time: entry.startTime,
+        end_time: entry.endTime,
+        description: entry.description,
+        date: entry.date,
+        status: entry.status || "confirmed",
+        subcategory: entry.subcategory,
+        notes: entry.notes,
+        source: entry.source || "manual",
+        approved: entry.approved !== false,
       })
       .select()
       .single()
@@ -81,22 +82,55 @@ class TimeEntriesService {
       throw error
     }
 
-    return result
+    return {
+      id: data.id,
+      categoryId: data.category_id,
+      categoryName: categoryData.name,
+      categoryColor: categoryData.color,
+      startTime: data.start_time,
+      endTime: data.end_time,
+      description: data.description || "",
+      date: data.date,
+      status: data.status || "confirmed",
+      subcategory: data.subcategory || undefined,
+      notes: data.notes || undefined,
+      source: data.source || "manual",
+      approved: data.approved || true,
+    }
   }
 
-  async updateTimeEntry(id: string, data: UpdateTimeEntryData): Promise<TimeEntry> {
-    const { data: result, error } = await this.supabase.from("time_entries").update(data).eq("id", id).select().single()
+  // Update a time entry
+  static async updateTimeEntry(entry: TimeEntry): Promise<void> {
+    const { data: userData } = await supabase.auth.getUser()
+    if (!userData.user) throw new Error("User not authenticated")
+
+    const { error } = await supabase
+      .from("time_entries")
+      .update({
+        category_id: entry.categoryId,
+        start_time: entry.startTime,
+        end_time: entry.endTime,
+        description: entry.description,
+        status: entry.status,
+        subcategory: entry.subcategory,
+        notes: entry.notes,
+        approved: entry.approved,
+      })
+      .eq("id", entry.id)
+      .eq("user_id", userData.user.id)
 
     if (error) {
       console.error("Error updating time entry:", error)
       throw error
     }
-
-    return result
   }
 
-  async deleteTimeEntry(id: string): Promise<void> {
-    const { error } = await this.supabase.from("time_entries").delete().eq("id", id)
+  // Delete a time entry
+  static async deleteTimeEntry(entryId: string): Promise<void> {
+    const { data: userData } = await supabase.auth.getUser()
+    if (!userData.user) throw new Error("User not authenticated")
+
+    const { error } = await supabase.from("time_entries").delete().eq("id", entryId).eq("user_id", userData.user.id)
 
     if (error) {
       console.error("Error deleting time entry:", error)
@@ -104,90 +138,64 @@ class TimeEntriesService {
     }
   }
 
-  async getTimeSpentByCategory(categoryId: string, startDate?: string, endDate?: string): Promise<number> {
-    let query = this.supabase.from("time_entries").select("start_time, end_time").eq("category_id", categoryId)
+  // Calculate total time spent for categories (for budget tracking)
+  static async calculateCategoryTimeUsage(startDate: string, endDate: string): Promise<Record<string, number>> {
+    const { data: userData } = await supabase.auth.getUser()
+    if (!userData.user) throw new Error("User not authenticated")
 
-    if (startDate) {
-      query = query.gte("date", startDate)
-    }
-    if (endDate) {
-      query = query.lte("date", endDate)
-    }
-
-    const { data, error } = await query
+    const { data, error } = await supabase
+      .from("time_entries")
+      .select("category_id, start_time, end_time")
+      .eq("user_id", userData.user.id)
+      .gte("date", startDate)
+      .lte("date", endDate)
+      .eq("status", "confirmed")
 
     if (error) {
-      console.error("Error fetching time spent:", error)
+      console.error("Error calculating time usage:", error)
       throw error
     }
 
-    // Calculate total minutes
-    let totalMinutes = 0
-    data?.forEach((entry) => {
-      const start = new Date(`1970-01-01T${entry.start_time}`)
-      const end = new Date(`1970-01-01T${entry.end_time}`)
-      const diffMs = end.getTime() - start.getTime()
-      totalMinutes += diffMs / (1000 * 60)
+    const categoryTimes: Record<string, number> = {}
+
+    data.forEach((entry) => {
+      const startTime = new Date(`1970-01-01T${entry.start_time}:00`)
+      const endTime = new Date(`1970-01-01T${entry.end_time}:00`)
+      const durationMinutes = (endTime.getTime() - startTime.getTime()) / (1000 * 60)
+
+      if (categoryTimes[entry.category_id]) {
+        categoryTimes[entry.category_id] += durationMinutes
+      } else {
+        categoryTimes[entry.category_id] = durationMinutes
+      }
     })
 
-    return totalMinutes
+    return categoryTimes
   }
 
-  // Helper method to validate activity against categories
-  async validateActivity(
-    activityName: string,
-  ): Promise<{ isValid: boolean; categoryId?: string; subcategoryName?: string }> {
-    // First check if it matches a category name
-    const { data: categories, error: catError } = await this.supabase
+  // Validate if a category/subcategory combination exists
+  static async validateCategorySubcategory(categoryId: string, subcategory?: string): Promise<boolean> {
+    const { data: userData } = await supabase.auth.getUser()
+    if (!userData.user) throw new Error("User not authenticated")
+
+    // Check if category exists and belongs to user
+    const { data: categoryData, error: categoryError } = await supabase
       .from("categories")
-      .select("id, name, subcategories")
-      .ilike("name", activityName)
+      .select("id, subcategories(name)")
+      .eq("id", categoryId)
+      .eq("user_id", userData.user.id)
+      .single()
 
-    if (catError) {
-      console.error("Error validating activity:", catError)
-      return { isValid: false }
+    if (categoryError || !categoryData) {
+      return false
     }
 
-    if (categories && categories.length > 0) {
-      return {
-        isValid: true,
-        categoryId: categories[0].id,
-      }
+    // If subcategory is specified, check if it exists
+    if (subcategory) {
+      const subcategoryExists = categoryData.subcategories?.some((sub: any) => sub.name === subcategory)
+      return subcategoryExists || false
     }
 
-    // Check if it matches a subcategory
-    const { data: allCategories, error: allCatError } = await this.supabase
-      .from("categories")
-      .select("id, name, subcategories")
-
-    if (allCatError) {
-      console.error("Error fetching categories for validation:", allCatError)
-      return { isValid: false }
-    }
-
-    for (const category of allCategories || []) {
-      if (category.subcategories) {
-        const subcategories = Array.isArray(category.subcategories) ? category.subcategories : []
-
-        const matchingSubcat = subcategories.find((sub: any) =>
-          typeof sub === "string"
-            ? sub.toLowerCase() === activityName.toLowerCase()
-            : sub.name?.toLowerCase() === activityName.toLowerCase(),
-        )
-
-        if (matchingSubcat) {
-          return {
-            isValid: true,
-            categoryId: category.id,
-            subcategoryName: typeof matchingSubcat === "string" ? matchingSubcat : matchingSubcat.name,
-          }
-        }
-      }
-    }
-
-    return { isValid: false }
+    return true
   }
 }
-
-export const timeEntriesService = new TimeEntriesService()
-export { TimeEntriesService }

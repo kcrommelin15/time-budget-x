@@ -1,175 +1,183 @@
 "use client"
 
-import type React from "react"
 import { useState, useEffect } from "react"
-import { timeEntriesService } from "@/lib/supabase/time-entries-service"
+import { PlayIcon, PauseIcon, StopIcon } from "@heroicons/react/24/solid"
+import { Chip } from "@nextui-org/react"
+import { useCategories } from "@/hooks/use-categories"
+import type { User } from "@supabase/supabase-js"
 
 interface EnhancedBottomTrackingWidgetProps {
-  onAddEntry: (entry: any) => void
+  onAddEntry: (entry: any) => Promise<void>
   isDesktop?: boolean
-  user?: any | null
-  categories: any[]
+  user?: User | null
 }
 
-const EnhancedBottomTrackingWidget: React.FC<EnhancedBottomTrackingWidgetProps> = ({
+export default function EnhancedBottomTrackingWidget({
   onAddEntry,
-  isDesktop,
+  isDesktop = false,
   user,
-  categories,
-}) => {
-  const [currentActivity, setCurrentActivity] = useState("")
-  const [startTime, setStartTime] = useState<Date | null>(null)
-  const [endTime, setEndTime] = useState<Date | null>(null)
-  const [isRunning, setIsRunning] = useState(false)
-  const [errorMessage, setErrorMessage] = useState<string | null>(null)
-  const [description, setDescription] = useState("")
-  const [validationError, setValidationError] = useState<string | null>(null)
-  const [isValidating, setIsValidating] = useState(false)
+}: EnhancedBottomTrackingWidgetProps) {
   const [isTracking, setIsTracking] = useState(false)
   const [isPaused, setIsPaused] = useState(false)
+  const [startTime, setStartTime] = useState<Date | null>(null)
   const [elapsedTime, setElapsedTime] = useState(0)
+  const [description, setDescription] = useState("")
   const [selectedCategory, setSelectedCategory] = useState("")
+  const { categories } = useCategories(user)
+  const [validationError, setValidationError] = useState<string | null>(null)
 
   useEffect(() => {
-    let intervalId: NodeJS.Timeout | null = null
+    let intervalId: NodeJS.Timeout
 
-    if (isRunning) {
+    if (isTracking && !isPaused) {
       if (!startTime) {
         setStartTime(new Date())
       }
+
       intervalId = setInterval(() => {
-        setEndTime(new Date())
+        setElapsedTime((prevElapsedTime) => prevElapsedTime + 1000)
       }, 1000)
-    } else {
-      if (intervalId) {
-        clearInterval(intervalId)
-      }
     }
 
-    return () => {
-      if (intervalId) {
-        clearInterval(intervalId)
-      }
-    }
-  }, [isRunning])
+    return () => clearInterval(intervalId)
+  }, [isTracking, isPaused, startTime])
 
-  const handleStartStop = async () => {
-    if (!isRunning) {
-      setIsRunning(true)
-      setErrorMessage(null)
-    } else {
-      setIsRunning(false)
-      if (!startTime) {
-        console.error("Start time is not set.")
-        setErrorMessage("Start time is not set.")
-        return
-      }
-
-      if (!endTime) {
-        console.error("End time is not set.")
-        setErrorMessage("End time is not set.")
-        return
-      }
-
-      try {
-        // Update validation call
-        const validation = await timeEntriesService.validateActivity(currentActivity)
-
-        if (!validation.categoryId) {
-          setErrorMessage("Invalid activity. Please provide a valid activity.")
-          return
-        }
-
-        // Update time entry creation
-        const newEntry = {
-          category_id: validation.categoryId!,
-          subcategory_name: validation.subcategoryName,
-          start_time: startTime,
-          end_time: endTime,
-          date: new Date().toISOString().split("T")[0],
-          description: currentActivity,
-          source: "live_tracking",
-        }
-
-        await timeEntriesService.createTimeEntry(newEntry)
-        setCurrentActivity("")
-        setStartTime(null)
-        setEndTime(null)
-      } catch (error: any) {
-        console.error("Error creating time entry:", error)
-        setErrorMessage("Failed to create time entry.")
-      }
-    }
+  const startTracking = () => {
+    setIsTracking(true)
+    setIsPaused(false)
+    setValidationError(null)
   }
 
-  const validateAndStartTracking = async () => {
-    if (!description.trim()) {
-      setValidationError("Please enter an activity description")
-      return
-    }
+  const pauseTracking = () => {
+    setIsPaused(true)
+  }
 
-    if (user && categories.length > 0) {
-      setIsValidating(true)
+  const resumeTracking = () => {
+    setIsPaused(false)
+  }
+
+  const stopTracking = async () => {
+    if (startTime) {
       setValidationError(null)
 
-      try {
-        const validation = await timeEntriesService.validateActivity(description.trim())
+      let category = categories.find((c) => c.id === selectedCategory)
 
-        if (!validation.isValid) {
-          setValidationError(
-            "Activity doesn't match any of your categories. Please use an existing category or subcategory name.",
-          )
-          setIsValidating(false)
-          return
+      // If no category selected but description provided, show error
+      if (!category && description) {
+        setValidationError("Please select a category for this activity")
+        return
+      }
+
+      if (!category && !description) {
+        setValidationError("Please select a category or enter a description")
+        return
+      }
+
+      // If category not found, show error
+      if (selectedCategory && !category) {
+        setValidationError("Selected category is not valid")
+        return
+      }
+
+      // Use first category as fallback only for mock users
+      if (!category && !user) {
+        category = categories[0]
+      }
+
+      if (category) {
+        try {
+          const endTime = new Date()
+          await onAddEntry({
+            categoryId: category.id,
+            categoryName: category.name,
+            categoryColor: category.color,
+            startTime: startTime.toTimeString().slice(0, 5),
+            endTime: endTime.toTimeString().slice(0, 5),
+            description: description || `${category.name} session`,
+            date: new Date().toISOString().split("T")[0],
+          })
+
+          setIsTracking(false)
+          setIsPaused(false)
+          setStartTime(null)
+          setElapsedTime(0)
+          setDescription("")
+          setSelectedCategory("")
+          setValidationError(null)
+        } catch (error) {
+          setValidationError(error instanceof Error ? error.message : "Failed to save time entry")
         }
-
-        // Set the validated category
-        setSelectedCategory(validation.categoryId || "")
-
-        // Start tracking
-        setStartTime(new Date())
-        setIsTracking(true)
-        setIsPaused(false)
-        setElapsedTime(0)
-        setValidationError(null)
-      } catch (err) {
-        setValidationError("Error validating activity. Please try again.")
-        console.error("Validation error:", err)
-      } finally {
-        setIsValidating(false)
       }
     }
   }
 
+  const formatTime = (ms: number): string => {
+    const totalSeconds = Math.floor(ms / 1000)
+    const minutes = Math.floor(totalSeconds / 60)
+    const seconds = totalSeconds % 60
+    return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`
+  }
+
+  const categoryChips = categories.slice(0, 4).map((cat) => ({
+    id: cat.id,
+    name: cat.name,
+    color: cat.color,
+  }))
+
   return (
-    <div style={{ padding: "20px", border: "1px solid #ccc", borderRadius: "5px", marginBottom: "20px" }}>
-      <h3>Live Activity Tracking</h3>
-      {errorMessage && <div style={{ color: "red", marginBottom: "10px" }}>{errorMessage}</div>}
-      <input
-        type="text"
-        placeholder="Enter activity description"
-        value={currentActivity}
-        onChange={(e) => setCurrentActivity(e.target.value)}
-        style={{ width: "100%", padding: "8px", marginBottom: "10px", boxSizing: "border-box" }}
-      />
-      <button
-        onClick={handleStartStop}
-        style={{
-          backgroundColor: isRunning ? "red" : "green",
-          color: "white",
-          padding: "10px 15px",
-          border: "none",
-          borderRadius: "5px",
-          cursor: "pointer",
-        }}
-      >
-        {isRunning ? "Stop Tracking" : "Start Tracking"}
-      </button>
-      {startTime && endTime && (
-        <p>Time elapsed: {Math.floor((endTime.getTime() - startTime.getTime()) / 1000)} seconds</p>
-      )}
+    <div className="fixed bottom-0 left-0 w-full bg-white border-t border-gray-200 p-4 z-50">
+      <div className="max-w-4xl mx-auto flex flex-col gap-2">
+        {validationError && <div className="text-sm text-red-500 mb-2 p-2 bg-red-50 rounded-lg">{validationError}</div>}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            {isTracking ? (
+              isPaused ? (
+                <button onClick={resumeTracking} className="p-2 rounded-full bg-green-500 text-white">
+                  <PlayIcon className="h-5 w-5" />
+                </button>
+              ) : (
+                <button onClick={pauseTracking} className="p-2 rounded-full bg-yellow-500 text-white">
+                  <PauseIcon className="h-5 w-5" />
+                </button>
+              )
+            ) : (
+              <button onClick={startTracking} className="p-2 rounded-full bg-blue-500 text-white">
+                <PlayIcon className="h-5 w-5" />
+              </button>
+            )}
+            {isTracking && (
+              <button onClick={stopTracking} className="p-2 rounded-full bg-red-500 text-white">
+                <StopIcon className="h-5 w-5" />
+              </button>
+            )}
+            {isTracking && <div className="text-lg font-medium">{formatTime(elapsedTime)}</div>}
+          </div>
+        </div>
+
+        {isTracking && (
+          <>
+            <div className="flex flex-wrap gap-2">
+              {categoryChips.map((category) => (
+                <Chip
+                  key={category.id}
+                  color="primary"
+                  variant={selectedCategory === category.id ? "shadow" : "flat"}
+                  onClick={() => setSelectedCategory(category.id)}
+                >
+                  {category.name}
+                </Chip>
+              ))}
+            </div>
+            <input
+              type="text"
+              placeholder="Add a description"
+              className="w-full p-2 border rounded"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+            />
+          </>
+        )}
+      </div>
     </div>
   )
 }
-
-export default EnhancedBottomTrackingWidget
