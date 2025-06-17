@@ -1,112 +1,71 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { TimeEntriesService } from "@/lib/supabase/time-entries-service"
-import { mockTimeEntries } from "@/lib/mock-data"
-import type { TimeEntry } from "@/lib/types"
-import type { User } from "@supabase/supabase-js"
+import { timeEntriesService, type TimeEntry, type CreateTimeEntryData } from "@/lib/supabase/time-entries-service"
 
-export function useTimeEntries(user: User | null, selectedDate: Date) {
-  const [timeEntries, setTimeEntries] = useState<TimeEntry[]>(mockTimeEntries)
-  const [loading, setLoading] = useState(false)
+export function useTimeEntries(date?: string) {
+  const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([])
+  const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const dateString = selectedDate.toISOString().split("T")[0]
-
-  // Load time entries when user or date changes
-  useEffect(() => {
-    if (user) {
-      loadTimeEntries()
-    } else {
-      // Use mock data when not signed in, filtered by date
-      const filteredMockEntries = mockTimeEntries.filter((entry) => entry.date === dateString)
-      setTimeEntries(filteredMockEntries)
-    }
-  }, [user, dateString])
-
-  const loadTimeEntries = async () => {
-    if (!user) return
-
-    setLoading(true)
-    setError(null)
-
+  const fetchTimeEntries = async () => {
     try {
-      const entries = await TimeEntriesService.getTimeEntriesForDate(dateString)
+      setLoading(true)
+      setError(null)
+      const entries = await timeEntriesService.getTimeEntries(date)
       setTimeEntries(entries)
     } catch (err) {
-      console.error("Error loading time entries:", err)
-      setError(err instanceof Error ? err.message : "Failed to load time entries")
-      setTimeEntries([])
+      console.error("Error fetching time entries:", err)
+      setError(err instanceof Error ? err.message : "Failed to fetch time entries")
     } finally {
       setLoading(false)
     }
   }
 
-  const addTimeEntry = async (newEntry: Omit<TimeEntry, "id">) => {
-    if (user) {
-      try {
-        const createdEntry = await TimeEntriesService.createTimeEntry(newEntry)
-        setTimeEntries((prev) => [...prev, createdEntry].sort((a, b) => a.startTime.localeCompare(b.startTime)))
-      } catch (err) {
-        console.error("Error adding time entry:", err)
-        setError(err instanceof Error ? err.message : "Failed to add time entry")
-        throw err
-      }
-    } else {
-      // Mock behavior for non-authenticated users
-      const entry: TimeEntry = {
-        ...newEntry,
-        id: Date.now().toString(),
-      }
-      setTimeEntries((prev) => [...prev, entry].sort((a, b) => a.startTime.localeCompare(b.startTime)))
+  const addTimeEntry = async (data: CreateTimeEntryData) => {
+    try {
+      const newEntry = await timeEntriesService.createTimeEntry(data)
+      setTimeEntries((prev) => [...prev, newEntry].sort((a, b) => a.start_time.localeCompare(b.start_time)))
+      return newEntry
+    } catch (err) {
+      console.error("Error adding time entry:", err)
+      throw err
     }
   }
 
-  const updateTimeEntry = async (updatedEntry: TimeEntry) => {
-    if (user) {
-      try {
-        await TimeEntriesService.updateTimeEntry(updatedEntry)
-        setTimeEntries((prev) => prev.map((entry) => (entry.id === updatedEntry.id ? updatedEntry : entry)))
-      } catch (err) {
-        console.error("Error updating time entry:", err)
-        setError(err instanceof Error ? err.message : "Failed to update time entry")
-        throw err
-      }
-    } else {
-      // Mock behavior for non-authenticated users
-      setTimeEntries((prev) => prev.map((entry) => (entry.id === updatedEntry.id ? updatedEntry : entry)))
+  const updateTimeEntry = async (id: string, data: Partial<CreateTimeEntryData>) => {
+    try {
+      const updatedEntry = await timeEntriesService.updateTimeEntry(id, data)
+      setTimeEntries((prev) => prev.map((entry) => (entry.id === id ? updatedEntry : entry)))
+      return updatedEntry
+    } catch (err) {
+      console.error("Error updating time entry:", err)
+      throw err
     }
   }
 
-  const deleteTimeEntry = async (entryId: string) => {
-    if (user) {
-      try {
-        await TimeEntriesService.deleteTimeEntry(entryId)
-        setTimeEntries((prev) => prev.filter((entry) => entry.id !== entryId))
-      } catch (err) {
-        console.error("Error deleting time entry:", err)
-        setError(err instanceof Error ? err.message : "Failed to delete time entry")
-        throw err
-      }
-    } else {
-      // Mock behavior for non-authenticated users
-      setTimeEntries((prev) => prev.filter((entry) => entry.id !== entryId))
+  const deleteTimeEntry = async (id: string) => {
+    try {
+      await timeEntriesService.deleteTimeEntry(id)
+      setTimeEntries((prev) => prev.filter((entry) => entry.id !== id))
+    } catch (err) {
+      console.error("Error deleting time entry:", err)
+      throw err
     }
   }
 
   const validateActivity = async (activityName: string) => {
-    if (user) {
-      try {
-        return await TimeEntriesService.validateActivity(activityName)
-      } catch (err) {
-        console.error("Error validating activity:", err)
-        throw err
-      }
-    } else {
-      // Mock validation for non-authenticated users
-      return { isValid: true, categoryId: "1" }
+    try {
+      return await timeEntriesService.validateActivity(activityName)
+    } catch (err) {
+      console.error("Error validating activity:", err)
+      return { isValid: false }
     }
   }
+
+  useEffect(() => {
+    fetchTimeEntries()
+  }, [date])
 
   return {
     timeEntries,
@@ -116,6 +75,6 @@ export function useTimeEntries(user: User | null, selectedDate: Date) {
     updateTimeEntry,
     deleteTimeEntry,
     validateActivity,
-    refreshTimeEntries: loadTimeEntries,
+    refetch: fetchTimeEntries,
   }
 }

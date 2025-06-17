@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS time_entries (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Create indexes for better performance
+-- Create indexes for better performance (only if they don't exist)
 CREATE INDEX IF NOT EXISTS idx_time_entries_user_id ON time_entries(user_id);
 CREATE INDEX IF NOT EXISTS idx_time_entries_category_id ON time_entries(category_id);
 CREATE INDEX IF NOT EXISTS idx_time_entries_date ON time_entries(date);
@@ -23,6 +23,12 @@ CREATE INDEX IF NOT EXISTS idx_time_entries_user_date ON time_entries(user_id, d
 
 -- Enable RLS
 ALTER TABLE time_entries ENABLE ROW LEVEL SECURITY;
+
+-- Drop existing policies if they exist, then recreate them
+DROP POLICY IF EXISTS "Users can view their own time entries" ON time_entries;
+DROP POLICY IF EXISTS "Users can insert their own time entries" ON time_entries;
+DROP POLICY IF EXISTS "Users can update their own time entries" ON time_entries;
+DROP POLICY IF EXISTS "Users can delete their own time entries" ON time_entries;
 
 -- Create RLS policies
 CREATE POLICY "Users can view their own time entries" ON time_entries
@@ -37,7 +43,7 @@ CREATE POLICY "Users can update their own time entries" ON time_entries
 CREATE POLICY "Users can delete their own time entries" ON time_entries
     FOR DELETE USING (auth.uid() = user_id);
 
--- Create function to update updated_at timestamp
+-- Create function to update updated_at timestamp (replace if exists)
 CREATE OR REPLACE FUNCTION update_time_entries_updated_at()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -46,7 +52,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Create trigger for updated_at
+-- Drop existing trigger if it exists, then create it
+DROP TRIGGER IF EXISTS update_time_entries_updated_at ON time_entries;
 CREATE TRIGGER update_time_entries_updated_at
     BEFORE UPDATE ON time_entries
     FOR EACH ROW
