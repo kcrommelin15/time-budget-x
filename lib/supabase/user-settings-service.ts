@@ -19,12 +19,13 @@ export class UserSettingsService {
     const { data: userData } = await supabase.auth.getUser()
     if (!userData.user) throw new Error("User not authenticated")
 
+    // First try to get existing settings
     const { data, error } = await supabase.from("user_settings").select("*").eq("user_id", userData.user.id).single()
 
     if (error) {
       if (error.code === "PGRST116") {
-        // No settings found, create default settings
-        return await this.createDefaultSettings()
+        // No settings found, try to create them using upsert to handle race conditions
+        return await this.upsertUserSettings({})
       }
       console.error("Error fetching user settings:", error)
       throw error
@@ -34,27 +35,9 @@ export class UserSettingsService {
   }
 
   static async createDefaultSettings(): Promise<UserSettings> {
-    const { data: userData } = await supabase.auth.getUser()
-    if (!userData.user) throw new Error("User not authenticated")
-
-    const defaultSettings: Omit<UserSettings, "id" | "created_at"> = {
-      user_id: userData.user.id,
-      notifications_push: true,
-      ai_smart_suggestions: true,
-      ai_auto_gap_filling: false,
-      ai_auto_categorize_text: true,
-      ai_auto_categorize_integrations: true,
-      ai_advanced_insights: false,
-    }
-
-    const { data, error } = await supabase.from("user_settings").insert(defaultSettings).select().single()
-
-    if (error) {
-      console.error("Error creating default settings:", error)
-      throw error
-    }
-
-    return data
+    // This method is now deprecated in favor of upsertUserSettings
+    // but keeping it for backward compatibility
+    return await this.upsertUserSettings({})
   }
 
   static async updateUserSettings(settings: Partial<UserSettings>): Promise<UserSettings> {
@@ -95,7 +78,10 @@ export class UserSettingsService {
 
     const { data, error } = await supabase
       .from("user_settings")
-      .upsert(settingsData, { onConflict: "user_id" })
+      .upsert(settingsData, {
+        onConflict: "user_id",
+        ignoreDuplicates: false,
+      })
       .select()
       .single()
 
