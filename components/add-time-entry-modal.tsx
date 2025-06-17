@@ -106,15 +106,13 @@ export default function AddTimeEntryModal({
         status: "confirmed",
       })
 
-      // Refresh time usage after adding entry
-      if (onTimeUsageUpdate) {
-        onTimeUsageUpdate()
-      }
-
+      // Only reset and close if successful
       reset()
       setSelectedCategory("")
       setSelectedSubcategory("")
+      setValidationError(null)
     } catch (error) {
+      console.error("Error adding time entry:", error)
       setValidationError(error instanceof Error ? error.message : "Failed to add time entry")
     }
   }

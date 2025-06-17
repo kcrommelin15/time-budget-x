@@ -66,7 +66,7 @@ export default function TimelineScreen({ isDesktop = false, user }: TimelineScre
       }
     } catch (error) {
       console.error("Failed to add time entry:", error)
-      // Error is already handled in the hook and modal
+      // Don't close the modal on error - let the modal handle the error display
     }
   }
 

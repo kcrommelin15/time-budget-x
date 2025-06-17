@@ -1,8 +1,9 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { PlayIcon, PauseIcon, StopIcon } from "@heroicons/react/24/solid"
-import { Chip } from "@nextui-org/react"
+import { Play, Pause, Square, Briefcase, Users, BookOpen, Dumbbell, Edit3 } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { useCategories } from "@/hooks/use-categories"
 import type { User } from "@supabase/supabase-js"
 
@@ -21,72 +22,56 @@ export default function EnhancedBottomTrackingWidget({
   const [isPaused, setIsPaused] = useState(false)
   const [startTime, setStartTime] = useState<Date | null>(null)
   const [elapsedTime, setElapsedTime] = useState(0)
-  const [description, setDescription] = useState("")
   const [selectedCategory, setSelectedCategory] = useState("")
+  const [description, setDescription] = useState("")
   const { categories } = useCategories(user)
-  const [validationError, setValidationError] = useState<string | null>(null)
 
   useEffect(() => {
-    let intervalId: NodeJS.Timeout
+    let interval: NodeJS.Timeout | null = null
 
-    if (isTracking && !isPaused) {
-      if (!startTime) {
-        setStartTime(new Date())
-      }
-
-      intervalId = setInterval(() => {
-        setElapsedTime((prevElapsedTime) => prevElapsedTime + 1000)
+    if (isTracking && !isPaused && startTime) {
+      interval = setInterval(() => {
+        setElapsedTime(Date.now() - startTime.getTime())
       }, 1000)
     }
 
-    return () => clearInterval(intervalId)
+    return () => {
+      if (interval) clearInterval(interval)
+    }
   }, [isTracking, isPaused, startTime])
 
+  const formatTime = (ms: number) => {
+    const totalSeconds = Math.floor(ms / 1000)
+    const hours = Math.floor(totalSeconds / 3600)
+    const minutes = Math.floor((totalSeconds % 3600) / 60)
+    const seconds = totalSeconds % 60
+
+    return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`
+  }
+
   const startTracking = () => {
+    if (!selectedCategory && !description) return
+    setStartTime(new Date())
     setIsTracking(true)
     setIsPaused(false)
-    setValidationError(null)
+    setElapsedTime(0)
   }
 
   const pauseTracking = () => {
-    setIsPaused(true)
-  }
-
-  const resumeTracking = () => {
-    setIsPaused(false)
+    setIsPaused(!isPaused)
   }
 
   const stopTracking = async () => {
     if (startTime) {
-      setValidationError(null)
-
+      const endTime = new Date()
       let category = categories.find((c) => c.id === selectedCategory)
 
-      // If no category selected but description provided, show error
       if (!category && description) {
-        setValidationError("Please select a category for this activity")
-        return
-      }
-
-      if (!category && !description) {
-        setValidationError("Please select a category or enter a description")
-        return
-      }
-
-      // If category not found, show error
-      if (selectedCategory && !category) {
-        setValidationError("Selected category is not valid")
-        return
-      }
-
-      // Use first category as fallback only for mock users
-      if (!category && !user) {
         category = categories[0]
       }
 
       if (category) {
         try {
-          const endTime = new Date()
           await onAddEntry({
             categoryId: category.id,
             categoryName: category.name,
@@ -96,87 +81,225 @@ export default function EnhancedBottomTrackingWidget({
             description: description || `${category.name} session`,
             date: new Date().toISOString().split("T")[0],
           })
-
-          setIsTracking(false)
-          setIsPaused(false)
-          setStartTime(null)
-          setElapsedTime(0)
-          setDescription("")
-          setSelectedCategory("")
-          setValidationError(null)
         } catch (error) {
-          setValidationError(error instanceof Error ? error.message : "Failed to save time entry")
+          console.error("Failed to save time entry:", error)
         }
       }
     }
+
+    setIsTracking(false)
+    setIsPaused(false)
+    setStartTime(null)
+    setElapsedTime(0)
+    setDescription("")
+    setSelectedCategory("")
   }
 
-  const formatTime = (ms: number): string => {
-    const totalSeconds = Math.floor(ms / 1000)
-    const minutes = Math.floor(totalSeconds / 60)
-    const seconds = totalSeconds % 60
-    return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`
-  }
+  // Map user's categories to the chip format, or use defaults for mock users
+  const categoryChips =
+    categories.length > 0
+      ? categories.slice(0, 4).map((cat) => ({
+          id: cat.id,
+          name: cat.name,
+          color: cat.color,
+          icon: Briefcase, // Default icon
+        }))
+      : [
+          { id: "1", name: "Work", color: "#3B82F6", icon: Briefcase },
+          { id: "2", name: "Meeting", color: "#8B5CF6", icon: Users },
+          { id: "4", name: "Study", color: "#10B981", icon: BookOpen },
+          { id: "3", name: "Workout", color: "#F59E0B", icon: Dumbbell },
+        ]
 
-  const categoryChips = categories.slice(0, 4).map((cat) => ({
-    id: cat.id,
-    name: cat.name,
-    color: cat.color,
-  }))
+  if (isTracking) {
+    const selectedCat =
+      categories.find((c) => c.id === selectedCategory) || categoryChips.find((c) => c.id === selectedCategory)
 
-  return (
-    <div className="fixed bottom-0 left-0 w-full bg-white border-t border-gray-200 p-4 z-50">
-      <div className="max-w-4xl mx-auto flex flex-col gap-2">
-        {validationError && <div className="text-sm text-red-500 mb-2 p-2 bg-red-50 rounded-lg">{validationError}</div>}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            {isTracking ? (
-              isPaused ? (
-                <button onClick={resumeTracking} className="p-2 rounded-full bg-green-500 text-white">
-                  <PlayIcon className="h-5 w-5" />
-                </button>
-              ) : (
-                <button onClick={pauseTracking} className="p-2 rounded-full bg-yellow-500 text-white">
-                  <PauseIcon className="h-5 w-5" />
-                </button>
-              )
-            ) : (
-              <button onClick={startTracking} className="p-2 rounded-full bg-blue-500 text-white">
-                <PlayIcon className="h-5 w-5" />
-              </button>
-            )}
-            {isTracking && (
-              <button onClick={stopTracking} className="p-2 rounded-full bg-red-500 text-white">
-                <StopIcon className="h-5 w-5" />
-              </button>
-            )}
-            {isTracking && <div className="text-lg font-medium">{formatTime(elapsedTime)}</div>}
+    return (
+      <div
+        className={`fixed bottom-0 left-1/2 transform -translate-x-1/2 z-40 ${
+          isDesktop ? "max-w-4xl w-full" : "max-w-md w-full"
+        } bg-white rounded-t-3xl shadow-2xl overflow-hidden`}
+      >
+        {/* Gradient Header */}
+        <div className="bg-gradient-to-r from-blue-500 via-purple-600 to-pink-500 p-6 relative overflow-hidden">
+          {/* Animated shimmer effect */}
+          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-pulse"></div>
+
+          <div className="relative z-10">
+            {/* Status indicator */}
+            {/* Time and Activity on same line */}
+            <div className="flex items-center justify-center gap-4 mb-3">
+              {/* Timer */}
+              <div className="text-3xl font-mono font-bold text-white bg-black/30 rounded-2xl px-4 py-2 backdrop-blur-sm border border-white/20">
+                {formatTime(elapsedTime)}
+              </div>
+
+              {/* Activity with prominent color */}
+              {selectedCat && (
+                <div className="flex items-center gap-3 bg-black/30 rounded-2xl px-4 py-2 backdrop-blur-sm border border-white/20">
+                  <div
+                    className="w-6 h-6 rounded-full border-2 border-white shadow-lg"
+                    style={{ backgroundColor: selectedCat.color }}
+                  ></div>
+                  <span className="font-bold text-lg text-white">{selectedCat.name}</span>
+                </div>
+              )}
+            </div>
+
+            {/* Description - now clearly editable */}
+            <div className="relative">
+              <Input
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Add a description..."
+                className="w-full text-sm text-white text-center bg-black/30 rounded-full px-4 py-2 backdrop-blur-sm border border-white/20 placeholder:text-white/70 focus:border-white/40 focus:bg-black/40 transition-all duration-200"
+              />
+              <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
+                <Edit3 className="w-4 h-4 text-white/60" />
+              </div>
+            </div>
           </div>
         </div>
 
-        {isTracking && (
-          <>
-            <div className="flex flex-wrap gap-2">
-              {categoryChips.map((category) => (
-                <Chip
-                  key={category.id}
-                  color="primary"
-                  variant={selectedCategory === category.id ? "shadow" : "flat"}
-                  onClick={() => setSelectedCategory(category.id)}
-                >
-                  {category.name}
-                </Chip>
-              ))}
+        {/* Controls Section */}
+        <div className="p-6 space-y-4 bg-white">
+          {/* Control Buttons */}
+          <div className="flex gap-3">
+            <Button
+              onClick={pauseTracking}
+              variant="outline"
+              className="flex-1 rounded-2xl h-14 border-gray-300 hover:bg-gray-50 text-gray-700 font-semibold"
+            >
+              {isPaused ? <Play className="w-5 h-5 mr-2" /> : <Pause className="w-5 h-5 mr-2" />}
+              {isPaused ? "Resume" : "Pause"}
+            </Button>
+
+            <Button
+              onClick={stopTracking}
+              className="flex-1 rounded-2xl h-14 bg-gray-900 hover:bg-gray-800 text-white font-semibold shadow-lg"
+            >
+              <Square className="w-5 h-5 mr-2" />
+              Stop
+            </Button>
+          </div>
+
+          {/* Quick Category Switch */}
+          <div className="pt-2">
+            <p className="text-xs text-gray-500 text-center mb-3">Switch activity:</p>
+            <div className="flex gap-2 justify-center">
+              {categoryChips.map((category) => {
+                const IconComponent = category.icon
+                return (
+                  <Button
+                    key={category.id}
+                    variant={selectedCategory === category.id ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => {
+                      if (selectedCategory !== category.id) {
+                        // Stop current tracking and create entry
+                        if (startTime) {
+                          const endTime = new Date()
+                          const currentCategory =
+                            categories.find((c) => c.id === selectedCategory) ||
+                            categoryChips.find((c) => c.id === selectedCategory)
+
+                          if (currentCategory) {
+                            onAddEntry({
+                              categoryId: selectedCategory,
+                              categoryName: currentCategory.name,
+                              categoryColor: currentCategory.color,
+                              startTime: startTime.toTimeString().slice(0, 5),
+                              endTime: endTime.toTimeString().slice(0, 5),
+                              description: description || `${currentCategory.name} session`,
+                              date: new Date().toISOString().split("T")[0],
+                            }).catch(console.error)
+                          }
+                        }
+
+                        // Start new tracking session
+                        setSelectedCategory(category.id)
+                        setStartTime(new Date())
+                        setElapsedTime(0)
+                        setIsPaused(false)
+                      }
+                    }}
+                    className={`rounded-2xl px-3 py-2 transition-all duration-200 ${
+                      selectedCategory === category.id
+                        ? "text-white shadow-lg scale-105"
+                        : "border-gray-200 bg-gray-50 hover:bg-white hover:scale-102"
+                    }`}
+                    style={
+                      selectedCategory === category.id
+                        ? { backgroundColor: category.color }
+                        : { borderColor: `${category.color}40`, color: category.color }
+                    }
+                  >
+                    <IconComponent className="w-4 h-4 mr-1" />
+                    {category.name}
+                  </Button>
+                )
+              })}
             </div>
-            <input
-              type="text"
-              placeholder="Add a description"
-              className="w-full p-2 border rounded"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-            />
-          </>
-        )}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div
+      className={`fixed bottom-0 left-1/2 transform -translate-x-1/2 z-40 ${
+        isDesktop ? "max-w-4xl w-full" : "max-w-md w-full"
+      } bg-white/95 backdrop-blur-xl rounded-t-3xl shadow-2xl border-t border-gray-200`}
+    >
+      <div className="p-6 space-y-4">
+        {/* Enhanced Category Chips */}
+        <div className="flex flex-wrap gap-3 justify-center">
+          {categoryChips.map((category) => {
+            const IconComponent = category.icon
+            return (
+              <Button
+                key={category.id}
+                variant={selectedCategory === category.id ? "default" : "outline"}
+                onClick={() => setSelectedCategory(selectedCategory === category.id ? "" : category.id)}
+                className={`rounded-2xl px-4 py-3 h-12 transition-all duration-200 ${
+                  selectedCategory === category.id
+                    ? "text-white shadow-lg scale-105"
+                    : "border-gray-200 bg-gray-50 hover:bg-white hover:scale-102"
+                }`}
+                style={
+                  selectedCategory === category.id
+                    ? { backgroundColor: category.color }
+                    : { borderColor: `${category.color}40`, color: category.color }
+                }
+              >
+                <IconComponent className="w-5 h-5 mr-2" />
+                <span className="font-medium">{category.name}</span>
+              </Button>
+            )
+          })}
+        </div>
+
+        {/* Start Button */}
+        <Button
+          onClick={startTracking}
+          disabled={!selectedCategory && !description}
+          className="w-full h-16 rounded-2xl bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white text-lg font-semibold shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <Play className="w-6 h-6 mr-3" />
+          Start
+        </Button>
+
+        {/* Text Input - moved to bottom */}
+        <div className="relative">
+          <Input
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="Where is your time going right now?"
+            className="w-full h-14 rounded-2xl text-center text-lg border-gray-200 bg-gray-50 focus:border-blue-400 shadow-sm placeholder:text-gray-400"
+          />
+        </div>
       </div>
     </div>
   )

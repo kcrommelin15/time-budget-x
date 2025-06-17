@@ -47,18 +47,20 @@ export class TimeEntriesService {
     const { data: userData } = await supabase.auth.getUser()
     if (!userData.user) throw new Error("User not authenticated")
 
-    // Get category info for the response
+    // First, validate that the category exists and belongs to the user
     const { data: categoryData, error: categoryError } = await supabase
       .from("categories")
       .select("name, color")
       .eq("id", entry.categoryId)
+      .eq("user_id", userData.user.id)
       .single()
 
-    if (categoryError) {
-      console.error("Error fetching category:", categoryError)
+    if (categoryError || !categoryData) {
+      console.error("Category validation error:", categoryError)
       throw new Error("Invalid category selected")
     }
 
+    // Insert the time entry
     const { data, error } = await supabase
       .from("time_entries")
       .insert({
@@ -66,11 +68,11 @@ export class TimeEntriesService {
         category_id: entry.categoryId,
         start_time: entry.startTime,
         end_time: entry.endTime,
-        description: entry.description,
+        description: entry.description || "",
         date: entry.date,
         status: entry.status || "confirmed",
-        subcategory: entry.subcategory,
-        notes: entry.notes,
+        subcategory: entry.subcategory || null,
+        notes: entry.notes || null,
         source: entry.source || "manual",
         approved: entry.approved !== false,
       })
@@ -79,7 +81,7 @@ export class TimeEntriesService {
 
     if (error) {
       console.error("Error creating time entry:", error)
-      throw error
+      throw new Error(`Failed to create time entry: ${error.message}`)
     }
 
     return {
