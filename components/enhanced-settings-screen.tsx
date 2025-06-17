@@ -1,12 +1,13 @@
 "use client"
 
 import { useState } from "react"
-import { LogOut, Slack, Bell, HelpCircle, Trash2, CheckCircle } from "lucide-react"
+import { LogOut, Slack, Bell, HelpCircle, Trash2, CheckCircle, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
 import AuthModal from "@/components/auth-modal"
 import { createClient } from "@/lib/supabase/client"
 import { useUserSettings } from "@/hooks/use-user-settings"
+import { UserSettingsService } from "@/lib/supabase/user-settings-service"
 import type { User } from "@supabase/supabase-js"
 
 interface EnhancedSettingsScreenProps {
@@ -18,6 +19,7 @@ interface EnhancedSettingsScreenProps {
 export default function EnhancedSettingsScreen({ user, onAuth, onLogout }: EnhancedSettingsScreenProps) {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false)
   const [isSigningOut, setIsSigningOut] = useState(false)
+  const [integrationLoading, setIntegrationLoading] = useState<string | null>(null)
 
   const { settings, loading, error, updateSetting } = useUserSettings(user)
   const supabase = createClient()
@@ -50,6 +52,26 @@ export default function EnhancedSettingsScreen({ user, onAuth, onLogout }: Enhan
       window.location.reload()
     } finally {
       setIsSigningOut(false)
+    }
+  }
+
+  const handleIntegrationToggle = async (integration: "slack" | "trello") => {
+    if (!user || !settings) return
+
+    setIntegrationLoading(integration)
+    try {
+      const currentStatus =
+        integration === "slack" ? settings.integration_slack_connected : settings.integration_trello_connected
+
+      await UserSettingsService.toggleIntegration(integration, !currentStatus)
+
+      // Update local state
+      const fieldName = `integration_${integration}_connected` as keyof typeof settings
+      await updateSetting(fieldName, !currentStatus)
+    } catch (err) {
+      console.error(`Error toggling ${integration} integration:`, err)
+    } finally {
+      setIntegrationLoading(null)
     }
   }
 
@@ -127,8 +149,10 @@ export default function EnhancedSettingsScreen({ user, onAuth, onLogout }: Enhan
         <div className="bg-white rounded-3xl border border-gray-200 overflow-hidden shadow-lg">
           <div className="p-6 border-b border-gray-100">
             <h3 className="font-semibold text-gray-900">Integrations</h3>
+            <p className="text-sm text-gray-600 mt-1">Connect your favorite tools to automatically track time</p>
           </div>
           <div className="p-6 space-y-4">
+            {/* Slack Integration */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center">
@@ -137,15 +161,36 @@ export default function EnhancedSettingsScreen({ user, onAuth, onLogout }: Enhan
                 <div>
                   <p className="font-medium text-gray-900">Slack</p>
                   <div className="flex items-center gap-1">
-                    <CheckCircle className="w-3 h-3 text-green-500" />
-                    <p className="text-sm text-green-600">Connected</p>
+                    {settings?.integration_slack_connected ? (
+                      <>
+                        <CheckCircle className="w-3 h-3 text-green-500" />
+                        <p className="text-sm text-green-600">Connected</p>
+                      </>
+                    ) : (
+                      <>
+                        <X className="w-3 h-3 text-gray-400" />
+                        <p className="text-sm text-gray-600">Not connected</p>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>
-              <Button variant="outline" size="sm" className="rounded-xl">
-                Manage
+              <Button
+                variant={settings?.integration_slack_connected ? "outline" : "default"}
+                size="sm"
+                className="rounded-xl"
+                onClick={() => handleIntegrationToggle("slack")}
+                disabled={integrationLoading === "slack" || loading}
+              >
+                {integrationLoading === "slack"
+                  ? "Loading..."
+                  : settings?.integration_slack_connected
+                    ? "Disconnect"
+                    : "Connect"}
               </Button>
             </div>
+
+            {/* Trello Integration */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
@@ -156,11 +201,33 @@ export default function EnhancedSettingsScreen({ user, onAuth, onLogout }: Enhan
                 </div>
                 <div>
                   <p className="font-medium text-gray-900">Trello</p>
-                  <p className="text-sm text-gray-600">Sync with Trello boards</p>
+                  <div className="flex items-center gap-1">
+                    {settings?.integration_trello_connected ? (
+                      <>
+                        <CheckCircle className="w-3 h-3 text-green-500" />
+                        <p className="text-sm text-green-600">Connected</p>
+                      </>
+                    ) : (
+                      <>
+                        <X className="w-3 h-3 text-gray-400" />
+                        <p className="text-sm text-gray-600">Not connected</p>
+                      </>
+                    )}
+                  </div>
                 </div>
               </div>
-              <Button variant="outline" size="sm" className="rounded-xl">
-                Connect
+              <Button
+                variant={settings?.integration_trello_connected ? "outline" : "default"}
+                size="sm"
+                className="rounded-xl"
+                onClick={() => handleIntegrationToggle("trello")}
+                disabled={integrationLoading === "trello" || loading}
+              >
+                {integrationLoading === "trello"
+                  ? "Loading..."
+                  : settings?.integration_trello_connected
+                    ? "Disconnect"
+                    : "Connect"}
               </Button>
             </div>
           </div>

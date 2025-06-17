@@ -9,6 +9,8 @@ export interface UserSettings {
   ai_auto_categorize_text: boolean
   ai_auto_categorize_integrations: boolean
   ai_advanced_insights: boolean
+  integration_slack_connected: boolean
+  integration_trello_connected: boolean
   created_at?: string
 }
 
@@ -74,6 +76,8 @@ export class UserSettingsService {
       ai_auto_categorize_text: settings.ai_auto_categorize_text ?? true,
       ai_auto_categorize_integrations: settings.ai_auto_categorize_integrations ?? true,
       ai_advanced_insights: settings.ai_advanced_insights ?? false,
+      integration_slack_connected: settings.integration_slack_connected ?? false,
+      integration_trello_connected: settings.integration_trello_connected ?? false,
     }
 
     const { data, error } = await supabase
@@ -91,5 +95,10 @@ export class UserSettingsService {
     }
 
     return data
+  }
+
+  static async toggleIntegration(integration: "slack" | "trello", connected: boolean): Promise<UserSettings> {
+    const fieldName = `integration_${integration}_connected` as keyof UserSettings
+    return await this.updateUserSettings({ [fieldName]: connected })
   }
 }
