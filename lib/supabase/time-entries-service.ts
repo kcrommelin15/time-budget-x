@@ -179,6 +179,8 @@ export class TimeEntriesService {
       const endTime = new Date(entry.end_time)
       const durationMinutes = (endTime.getTime() - startTime.getTime()) / (1000 * 60)
 
+      console.log(`Time entry: ${entry.start_time} to ${entry.end_time} = ${durationMinutes} minutes`)
+
       if (categoryTimes[entry.category_id]) {
         categoryTimes[entry.category_id] += durationMinutes
       } else {
@@ -186,6 +188,7 @@ export class TimeEntriesService {
       }
     })
 
+    console.log("Category times calculated:", categoryTimes)
     return categoryTimes
   }
 

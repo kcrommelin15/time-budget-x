@@ -24,14 +24,14 @@ export class DataService {
       id: cat.id,
       name: cat.name,
       weeklyBudget: cat.weekly_budget,
-      timeUsed: cat.time_used || 0,
+      timeUsed: (cat.time_used || 0) / 60, // Convert minutes to hours for display
       color: cat.color,
       goalDirection: cat.goal_direction,
       subcategories:
         cat.subcategories?.map((sub: any) => ({
           name: sub.name,
           budget: sub.budget,
-          timeUsed: sub.time_used || 0,
+          timeUsed: (sub.time_used || 0) / 60, // Convert minutes to hours for display
           goalDirection: sub.goal_direction,
           isFixed: sub.is_fixed || false,
         })) || [],
@@ -66,7 +66,7 @@ export class DataService {
         category_id: data.id,
         name: sub.name,
         budget: sub.budget,
-        time_used: sub.timeUsed || 0,
+        time_used: (sub.timeUsed || 0) * 60, // Convert hours to minutes for storage
         goal_direction: sub.goalDirection,
         is_fixed: sub.isFixed || false,
       }))
@@ -83,7 +83,7 @@ export class DataService {
       id: data.id,
       name: data.name,
       weeklyBudget: data.weekly_budget,
-      timeUsed: data.time_used || 0,
+      timeUsed: (data.time_used || 0) / 60, // Convert minutes to hours for display
       color: data.color,
       goalDirection: data.goal_direction,
       subcategories: category.subcategories || [],
@@ -98,7 +98,7 @@ export class DataService {
         weekly_budget: category.weeklyBudget,
         color: category.color,
         goal_direction: category.goalDirection,
-        time_used: category.timeUsed,
+        time_used: category.timeUsed * 60, // Convert hours to minutes for storage
       })
       .eq("id", category.id)
 
@@ -118,7 +118,7 @@ export class DataService {
           category_id: category.id,
           name: sub.name,
           budget: sub.budget,
-          time_used: sub.timeUsed || 0,
+          time_used: (sub.timeUsed || 0) * 60, // Convert hours to minutes for storage
           goal_direction: sub.goalDirection,
           is_fixed: sub.isFixed || false,
         }))
@@ -175,6 +175,7 @@ export class DataService {
     if (updates.budget !== undefined) updateData.budget = updates.budget
     if (updates.goalDirection !== undefined) updateData.goal_direction = updates.goalDirection
     if (updates.isFixed !== undefined) updateData.is_fixed = updates.isFixed
+    if (updates.timeUsed !== undefined) updateData.time_used = updates.timeUsed * 60 // Convert hours to minutes
 
     const { error } = await supabase
       .from("subcategories")
@@ -241,11 +242,11 @@ export class DataService {
       const { TimeEntriesService } = await import("./time-entries-service")
       const categoryTimes = await TimeEntriesService.calculateCategoryTimeUsage(startDateString, endDateString)
 
-      // Update each category's time_used
+      // Update each category's time_used (categoryTimes is already in minutes)
       for (const [categoryId, timeInMinutes] of Object.entries(categoryTimes)) {
         await supabase
           .from("categories")
-          .update({ time_used: timeInMinutes })
+          .update({ time_used: timeInMinutes }) // Store as minutes in database
           .eq("id", categoryId)
           .eq("user_id", userData.user.id)
       }
