@@ -190,3 +190,4 @@ class TimeEntriesService {
 }
 
 export const timeEntriesService = new TimeEntriesService()
+export { TimeEntriesService }
