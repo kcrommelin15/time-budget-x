@@ -1,6 +1,6 @@
 import { createClient } from "./client"
 import type { Category, Subcategory } from "../types"
-import { roundTimeUpToMinute } from "./goal-utils"
+import { roundTimeUpToMinute } from "../goal-utils"
 
 const supabase = createClient()
 
