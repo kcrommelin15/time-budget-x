@@ -27,7 +27,6 @@ export default function TimelineScreen({ isDesktop = false, user }: TimelineScre
   const timelineRef = useRef<HTMLDivElement>(null)
   const dateString = selectedDate.toISOString().split("T")[0]
 
-  // Use real Supabase data instead of dummy data
   const { timeEntries, loading, error, addTimeEntry, updateTimeEntry, deleteTimeEntry } = useTimeEntries(dateString)
   const { categories } = useCategories()
 
@@ -86,7 +85,6 @@ export default function TimelineScreen({ isDesktop = false, user }: TimelineScre
     }
   }
 
-  // Handle zoom with scroll wheel
   useEffect(() => {
     const handleWheel = (e: WheelEvent) => {
       if (e.ctrlKey || e.metaKey) {
@@ -103,10 +101,9 @@ export default function TimelineScreen({ isDesktop = false, user }: TimelineScre
     }
   }, [])
 
-  // Generate time slots based on zoom level
   const generateTimeSlots = () => {
     const slots = []
-    let increment = 60 // minutes
+    let increment = 60
     let startHour = 6
     let endHour = 23
 
@@ -134,7 +131,6 @@ export default function TimelineScreen({ isDesktop = false, user }: TimelineScre
 
   const timeSlots = generateTimeSlots()
 
-  // Calculate slot height based on zoom
   const getSlotHeight = () => {
     if (zoomLevel <= 0.5) return 40
     if (zoomLevel <= 0.8) return 60
@@ -144,13 +140,11 @@ export default function TimelineScreen({ isDesktop = false, user }: TimelineScre
 
   const slotHeight = getSlotHeight()
 
-  // Convert time string to minutes since midnight
   const timeToMinutes = (timeString: string) => {
     const [hour, minute] = timeString.split(":").map(Number)
     return hour * 60 + minute
   }
 
-  // Calculate which time slots an entry spans
   const getEntrySpan = (entry: any) => {
     const startMinutes = timeToMinutes(entry.start_time)
     const endMinutes = timeToMinutes(entry.end_time)
@@ -173,7 +167,6 @@ export default function TimelineScreen({ isDesktop = false, user }: TimelineScre
     return spannedSlots
   }
 
-  // Create a map of which slots are occupied by entries
   const occupiedSlots = new Map<string, any>()
   const entrySpans = new Map<string, string[]>()
 
@@ -186,7 +179,6 @@ export default function TimelineScreen({ isDesktop = false, user }: TimelineScre
     })
   })
 
-  // Handle time slot click
   const handleTimeSlotClick = (time: string) => {
     const [hour, minute] = time.split(":").map(Number)
     const startTime = time
@@ -197,14 +189,12 @@ export default function TimelineScreen({ isDesktop = false, user }: TimelineScre
     setIsAddModalOpen(true)
   }
 
-  // Calculate timeline container height
   const headerHeight = isDesktop ? 120 : 140
   const trackingWidgetHeight = isDesktop ? 200 : 240
   const navigationHeight = isDesktop ? 0 : 80
   const totalFooterHeight = trackingWidgetHeight + navigationHeight
   const timelineHeight = `calc(100vh - ${headerHeight + totalFooterHeight}px)`
 
-  // Convert database entries to UI format
   const convertEntryForUI = (entry: any) => ({
     id: entry.id,
     categoryId: entry.category_id,
@@ -230,7 +220,6 @@ export default function TimelineScreen({ isDesktop = false, user }: TimelineScre
 
   return (
     <>
-      {/* Sticky Header - EXACT SAME AS BEFORE */}
       <div className="sticky top-0 z-30 bg-gradient-to-br from-gray-50 via-white to-gray-100 border-b border-gray-200/60 backdrop-blur-xl">
         <div className="p-6 pb-4">
           <div className="flex items-center gap-3 mb-4">
@@ -258,7 +247,6 @@ export default function TimelineScreen({ isDesktop = false, user }: TimelineScre
         </div>
       </div>
 
-      {/* Scrollable Timeline - EXACT SAME AS BEFORE */}
       <div ref={timelineRef} className="overflow-y-auto overflow-x-hidden" style={{ height: timelineHeight }}>
         {loading ? (
           <div className="flex items-center justify-center py-8">
@@ -316,7 +304,6 @@ export default function TimelineScreen({ isDesktop = false, user }: TimelineScre
         )}
       </div>
 
-      {/* All Modals - EXACT SAME AS BEFORE */}
       <AddTimeEntryModal
         isOpen={isAddModalOpen}
         onClose={() => {
@@ -337,7 +324,6 @@ export default function TimelineScreen({ isDesktop = false, user }: TimelineScre
         onDateSelect={handleDateSelect}
       />
 
-      {/* Sticky Footer - Activity Tracking Widget - EXACT SAME AS BEFORE */}
       <div className="sticky bottom-0 z-30">
         <EnhancedBottomTrackingWidget
           onAddEntry={handleAddTimeEntry}
