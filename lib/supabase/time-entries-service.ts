@@ -177,9 +177,12 @@ export class TimeEntriesService {
     data.forEach((entry) => {
       const startTime = new Date(entry.start_time)
       const endTime = new Date(entry.end_time)
-      const durationMinutes = (endTime.getTime() - startTime.getTime()) / (1000 * 60)
+      const durationMs = endTime.getTime() - startTime.getTime()
 
-      console.log(`Time entry: ${entry.start_time} to ${entry.end_time} = ${durationMinutes} minutes`)
+      // Always round up to the nearest minute (minimum 1 minute)
+      const durationMinutes = Math.max(1, Math.ceil(durationMs / (1000 * 60)))
+
+      console.log(`Time entry: ${entry.start_time} to ${entry.end_time} = ${durationMinutes} minutes (rounded up)`)
 
       if (categoryTimes[entry.category_id]) {
         categoryTimes[entry.category_id] += durationMinutes
