@@ -37,17 +37,23 @@ export default function AddCategoryModal({ isOpen, onClose, onAdd }: AddCategory
   if (!isOpen) return null
 
   const onSubmit = (data: any) => {
+    // Prevent form from auto-submitting on first character
+    if (!data.name || data.name.length < 1) return
+
     onAdd({
       name: data.name,
       weeklyBudget: Number.parseInt(data.weeklyBudget),
       color: selectedColor,
       subcategories: [],
     })
+
+    // Reset form after successful submission
     reset()
     setSelectedColor(colorPalette[0].value)
   }
 
   const handleClose = () => {
+    // Reset form when closing
     reset()
     setSelectedColor(colorPalette[0].value)
     onClose()

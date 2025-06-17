@@ -4,21 +4,37 @@ import { useState } from "react"
 import { DragDropContext, Droppable } from "@hello-pangea/dnd"
 import { Plus, Calendar, Edit3, Check } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import EditCategoryModal from "@/components/edit-category-modal"
+import AddCategoryModal from "@/components/add-category-modal"
 import TrackingPreferencesModal from "@/components/tracking-preferences-modal"
 import ListStyleCategoryCard from "@/components/list-style-category-card"
 import ArchivedCategoriesSection from "@/components/archived-categories-section"
 import EnhancedAllocationBanner from "@/components/enhanced-allocation-banner"
-import { mockCategories } from "@/lib/mock-data"
+import { useCategories } from "@/hooks/use-categories"
 import type { Category } from "@/lib/types"
+import type { User } from "@supabase/supabase-js"
 
 interface BudgetScreenProps {
   isDesktop?: boolean
+  user?: User | null
 }
 
-export default function BudgetScreen({ isDesktop = false }: BudgetScreenProps) {
-  const [categories, setCategories] = useState<Category[]>(mockCategories)
-  const [archivedCategories, setArchivedCategories] = useState<Category[]>([])
+export default function BudgetScreen({ isDesktop = false, user = null }: BudgetScreenProps) {
+  const {
+    categories,
+    archivedCategories,
+    loading,
+    error,
+    addCategory,
+    updateCategory,
+    deleteCategory,
+    archiveCategory,
+    restoreCategory,
+    reorderCategories,
+    addSubcategory,
+    updateSubcategory,
+    deleteSubcategory,
+  } = useCategories(user)
+
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
   const [isPreferencesOpen, setIsPreferencesOpen] = useState(false)
   const [isEditMode, setIsEditMode] = useState(false)
@@ -33,87 +49,60 @@ export default function BudgetScreen({ isDesktop = false }: BudgetScreenProps) {
     const [reorderedItem] = items.splice(result.source.index, 1)
     items.splice(result.destination.index, 0, reorderedItem)
 
-    setCategories(items)
+    reorderCategories(items)
   }
 
   const handleAddCategory = (newCategory: Omit<Category, "id" | "timeUsed">) => {
-    const category: Category = {
-      ...newCategory,
-      id: Date.now().toString(),
-      timeUsed: 0,
-    }
-    setCategories([...categories, category])
+    addCategory(newCategory)
     setIsAddModalOpen(false)
   }
 
   const handleEditCategory = (updatedCategory: Category) => {
-    setCategories(categories.map((cat) => (cat.id === updatedCategory.id ? updatedCategory : cat)))
+    updateCategory(updatedCategory)
   }
 
   const handleArchiveCategory = (categoryId: string) => {
-    const categoryToArchive = categories.find((cat) => cat.id === categoryId)
-    if (categoryToArchive) {
-      setArchivedCategories([...archivedCategories, categoryToArchive])
-      setCategories(categories.filter((cat) => cat.id !== categoryId))
+    archiveCategory(categoryId)
+  }
+
+  const handleDeleteCategory = (categoryId: string) => {
+    if (confirm("Are you sure you want to permanently delete this category? This action cannot be undone.")) {
+      deleteCategory(categoryId)
     }
   }
 
   const handleRestoreCategory = (categoryId: string) => {
-    const categoryToRestore = archivedCategories.find((cat) => cat.id === categoryId)
-    if (categoryToRestore) {
-      setCategories([...categories, categoryToRestore])
-      setArchivedCategories(archivedCategories.filter((cat) => cat.id !== categoryId))
-    }
+    restoreCategory(categoryId)
   }
 
   const handlePermanentDelete = (categoryId: string) => {
-    setArchivedCategories(archivedCategories.filter((cat) => cat.id !== categoryId))
+    deleteCategory(categoryId)
   }
 
   const handleQuickBudgetEdit = (categoryId: string, newBudget: number) => {
-    setCategories(categories.map((cat) => (cat.id === categoryId ? { ...cat, weeklyBudget: newBudget } : cat)))
+    const categoryToUpdate = categories.find((cat) => cat.id === categoryId)
+    if (categoryToUpdate) {
+      updateCategory({ ...categoryToUpdate, weeklyBudget: newBudget })
+    }
   }
 
   const handleSubcategoryReorder = (categoryId: string, subcategories: any[]) => {
-    setCategories(categories.map((cat) => (cat.id === categoryId ? { ...cat, subcategories } : cat)))
+    const categoryToUpdate = categories.find((cat) => cat.id === categoryId)
+    if (categoryToUpdate) {
+      updateCategory({ ...categoryToUpdate, subcategories })
+    }
   }
 
   const handleSubcategoryEdit = (categoryId: string, subcategoryName: string, newBudget: number) => {
-    setCategories(
-      categories.map((cat) => {
-        if (cat.id === categoryId) {
-          const updatedSubcategories = (cat.subcategories || []).map((sub) =>
-            sub.name === subcategoryName ? { ...sub, budget: newBudget } : sub,
-          )
-          return { ...cat, subcategories: updatedSubcategories }
-        }
-        return cat
-      }),
-    )
+    updateSubcategory(categoryId, subcategoryName, newBudget)
   }
 
   const handleSubcategoryDelete = (categoryId: string, subcategoryName: string) => {
-    setCategories(
-      categories.map((cat) => {
-        if (cat.id === categoryId) {
-          const updatedSubcategories = (cat.subcategories || []).filter((sub) => sub.name !== subcategoryName)
-          return { ...cat, subcategories: updatedSubcategories }
-        }
-        return cat
-      }),
-    )
+    deleteSubcategory(categoryId, subcategoryName)
   }
 
   const handleSubcategoryAdd = (categoryId: string, subcategoryName: string, budget: number) => {
-    setCategories(
-      categories.map((cat) => {
-        if (cat.id === categoryId) {
-          const newSubcategory = { name: subcategoryName, budget, timeUsed: 0 }
-          return { ...cat, subcategories: [...(cat.subcategories || []), newSubcategory] }
-        }
-        return cat
-      }),
-    )
+    addSubcategory(categoryId, subcategoryName, budget)
   }
 
   return (
@@ -146,6 +135,20 @@ export default function BudgetScreen({ isDesktop = false }: BudgetScreenProps) {
         </div>
       </div>
 
+      {/* Error Display */}
+      {error && (
+        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-2xl">
+          <p className="text-red-700 text-sm">{error}</p>
+        </div>
+      )}
+
+      {/* Loading Display */}
+      {loading && (
+        <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-2xl">
+          <p className="text-blue-700 text-sm">Loading categories...</p>
+        </div>
+      )}
+
       {/* Enhanced Allocation Banner */}
       {remainingHours !== 0 && (
         <EnhancedAllocationBanner
@@ -168,6 +171,7 @@ export default function BudgetScreen({ isDesktop = false }: BudgetScreenProps) {
                   isEditMode={isEditMode}
                   onEdit={handleEditCategory}
                   onArchive={handleArchiveCategory}
+                  onDelete={handleDeleteCategory}
                   onQuickBudgetEdit={handleQuickBudgetEdit}
                   onSubcategoryReorder={handleSubcategoryReorder}
                   onSubcategoryEdit={handleSubcategoryEdit}
@@ -204,12 +208,7 @@ export default function BudgetScreen({ isDesktop = false }: BudgetScreenProps) {
         />
       )}
 
-      <EditCategoryModal
-        isOpen={isAddModalOpen}
-        onClose={() => setIsAddModalOpen(false)}
-        onAdd={handleAddCategory}
-        mode="add"
-      />
+      <AddCategoryModal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} onAdd={handleAddCategory} />
       <TrackingPreferencesModal isOpen={isPreferencesOpen} onClose={() => setIsPreferencesOpen(false)} />
     </div>
   )

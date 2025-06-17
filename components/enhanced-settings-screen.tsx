@@ -5,29 +5,52 @@ import { LogOut, Slack, Bell, HelpCircle, Trash2, CheckCircle } from "lucide-rea
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
 import AuthModal from "@/components/auth-modal"
+import { createClient } from "@/lib/supabase/client"
+import { useUserSettings } from "@/hooks/use-user-settings"
+import type { User } from "@supabase/supabase-js"
 
 interface EnhancedSettingsScreenProps {
-  user?: any
-  onAuth?: (user: any) => void
-  onLogout?: () => void
+  user: User | null
+  onAuth: (user: User) => void
+  onLogout: () => void
 }
 
 export default function EnhancedSettingsScreen({ user, onAuth, onLogout }: EnhancedSettingsScreenProps) {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false)
-  const [notifications, setNotifications] = useState({
-    push: true,
-  })
-  const [aiEnhancements, setAiEnhancements] = useState({
-    smartSuggestions: true,
-    autoGapFilling: false,
-    autoCategorizeText: true,
-    autoCategorizeIntegrations: true,
-    advancedInsights: false,
-  })
+  const [isSigningOut, setIsSigningOut] = useState(false)
 
-  const handleAuth = (userData: any) => {
-    onAuth?.(userData)
+  const { settings, loading, error, updateSetting } = useUserSettings(user)
+  const supabase = createClient()
+
+  const handleAuth = (userData: User) => {
+    onAuth(userData)
     setIsAuthModalOpen(false)
+  }
+
+  const handleLogout = async () => {
+    setIsSigningOut(true)
+    try {
+      // Clear all auth state first
+      const { error } = await supabase.auth.signOut({ scope: "global" })
+
+      if (error) {
+        console.error("Error signing out:", error)
+      }
+
+      // Always call onLogout to clear local state
+      onLogout()
+
+      // Force reload to clear any cached OAuth state
+      setTimeout(() => {
+        window.location.reload()
+      }, 100)
+    } catch (err) {
+      console.error("Unexpected error during sign out:", err)
+      onLogout() // Still clear local state
+      window.location.reload()
+    } finally {
+      setIsSigningOut(false)
+    }
   }
 
   // Mock streak data - in real app this would come from user data
@@ -42,6 +65,20 @@ export default function EnhancedSettingsScreen({ user, onAuth, onLogout }: Enhan
         </h1>
         <p className="text-gray-600 mt-2">Manage your account and preferences</p>
       </div>
+
+      {/* Error Display */}
+      {error && (
+        <div className="mb-6 bg-red-50 border border-red-200 rounded-2xl p-4">
+          <p className="text-red-600 text-sm">{error}</p>
+        </div>
+      )}
+
+      {/* Loading State */}
+      {loading && user && (
+        <div className="mb-6 bg-blue-50 border border-blue-200 rounded-2xl p-4">
+          <p className="text-blue-600 text-sm">Loading your settings...</p>
+        </div>
+      )}
 
       {/* User Profile Section */}
       {!user ? (
@@ -71,7 +108,7 @@ export default function EnhancedSettingsScreen({ user, onAuth, onLogout }: Enhan
       ) : (
         <div className="flex justify-center mb-8">
           <div className="bg-gradient-to-br from-blue-50 via-purple-50 to-indigo-50 rounded-3xl p-8 border border-blue-100 shadow-lg max-w-md w-full text-center">
-            <h3 className="text-2xl font-bold text-gray-900 mb-2">{user.name}</h3>
+            <h3 className="text-2xl font-bold text-gray-900 mb-2">{user.user_metadata?.full_name || user.email}</h3>
             <p className="text-gray-600 text-lg mb-4">{user.email}</p>
             <div className="flex items-center justify-center gap-2">
               <div className="flex items-center gap-1">
@@ -146,9 +183,9 @@ export default function EnhancedSettingsScreen({ user, onAuth, onLogout }: Enhan
                 <p className="text-sm text-gray-600">Get AI-powered suggestions for better time tracking</p>
               </div>
               <Switch
-                checked={user ? aiEnhancements.smartSuggestions : aiEnhancements.smartSuggestions}
-                disabled={false}
-                onCheckedChange={(checked) => setAiEnhancements({ ...aiEnhancements, smartSuggestions: checked })}
+                checked={settings?.ai_smart_suggestions ?? true}
+                onCheckedChange={(checked) => updateSetting("ai_smart_suggestions", checked)}
+                disabled={loading}
               />
             </div>
             <div className="flex items-center justify-between">
@@ -157,9 +194,9 @@ export default function EnhancedSettingsScreen({ user, onAuth, onLogout }: Enhan
                 <p className="text-sm text-gray-600">Automatically fill gaps in your timeline</p>
               </div>
               <Switch
-                checked={user ? aiEnhancements.autoGapFilling : aiEnhancements.autoGapFilling}
-                disabled={false}
-                onCheckedChange={(checked) => setAiEnhancements({ ...aiEnhancements, autoGapFilling: checked })}
+                checked={settings?.ai_auto_gap_filling ?? false}
+                onCheckedChange={(checked) => updateSetting("ai_auto_gap_filling", checked)}
+                disabled={loading}
               />
             </div>
             <div className="flex items-center justify-between">
@@ -168,9 +205,9 @@ export default function EnhancedSettingsScreen({ user, onAuth, onLogout }: Enhan
                 <p className="text-sm text-gray-600">Automatically categorize manual entries</p>
               </div>
               <Switch
-                checked={user ? aiEnhancements.autoCategorizeText : aiEnhancements.autoCategorizeText}
-                disabled={false}
-                onCheckedChange={(checked) => setAiEnhancements({ ...aiEnhancements, autoCategorizeText: checked })}
+                checked={settings?.ai_auto_categorize_text ?? true}
+                onCheckedChange={(checked) => updateSetting("ai_auto_categorize_text", checked)}
+                disabled={loading}
               />
             </div>
             <div className="flex items-center justify-between">
@@ -179,11 +216,9 @@ export default function EnhancedSettingsScreen({ user, onAuth, onLogout }: Enhan
                 <p className="text-sm text-gray-600">Smart categorization from Slack, Trello, etc.</p>
               </div>
               <Switch
-                checked={user ? aiEnhancements.autoCategorizeIntegrations : aiEnhancements.autoCategorizeIntegrations}
-                disabled={false}
-                onCheckedChange={(checked) =>
-                  setAiEnhancements({ ...aiEnhancements, autoCategorizeIntegrations: checked })
-                }
+                checked={settings?.ai_auto_categorize_integrations ?? true}
+                onCheckedChange={(checked) => updateSetting("ai_auto_categorize_integrations", checked)}
+                disabled={loading}
               />
             </div>
             <div className="flex items-center justify-between">
@@ -192,9 +227,9 @@ export default function EnhancedSettingsScreen({ user, onAuth, onLogout }: Enhan
                 <p className="text-sm text-gray-600">Deep analytics and productivity patterns</p>
               </div>
               <Switch
-                checked={user ? aiEnhancements.advancedInsights : aiEnhancements.advancedInsights}
-                disabled={false}
-                onCheckedChange={(checked) => setAiEnhancements({ ...aiEnhancements, advancedInsights: checked })}
+                checked={settings?.ai_advanced_insights ?? false}
+                onCheckedChange={(checked) => updateSetting("ai_advanced_insights", checked)}
+                disabled={loading}
               />
             </div>
           </div>
@@ -215,8 +250,9 @@ export default function EnhancedSettingsScreen({ user, onAuth, onLogout }: Enhan
                 <p className="text-sm text-gray-600">Get notified about tracking reminders</p>
               </div>
               <Switch
-                checked={notifications.push}
-                onCheckedChange={(checked) => setNotifications({ ...notifications, push: checked })}
+                checked={settings?.notifications_push ?? true}
+                onCheckedChange={(checked) => updateSetting("notifications_push", checked)}
+                disabled={loading}
               />
             </div>
           </div>
@@ -245,12 +281,13 @@ export default function EnhancedSettingsScreen({ user, onAuth, onLogout }: Enhan
       {user && (
         <div className="mt-8">
           <Button
-            onClick={onLogout}
+            onClick={handleLogout}
+            disabled={isSigningOut}
             variant="outline"
-            className="w-full h-12 rounded-2xl border-red-200 text-red-600 hover:bg-red-50"
+            className="w-full h-12 rounded-2xl border-red-200 text-red-600 hover:bg-red-50 disabled:opacity-50"
           >
             <LogOut className="w-5 h-5 mr-2" />
-            Sign Out
+            {isSigningOut ? "Signing Out..." : "Sign Out"}
           </Button>
         </div>
       )}
@@ -268,7 +305,12 @@ export default function EnhancedSettingsScreen({ user, onAuth, onLogout }: Enhan
         </div>
       )}
 
-      <AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} onAuth={handleAuth} />
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        onAuth={handleAuth}
+        isInitialLoad={false}
+      />
     </div>
   )
 }
