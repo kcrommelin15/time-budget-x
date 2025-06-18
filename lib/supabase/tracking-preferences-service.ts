@@ -41,38 +41,10 @@ export class TrackingPreferencesService {
 
     if (error) {
       if (error.code === "PGRST116") {
-        // No preferences found, create default ones
-        return await this.createDefaultPreferences()
+        // No preferences found, use upsert to create default ones safely
+        return await this.upsertTrackingPreferences({})
       }
       console.error("Error fetching tracking preferences:", error)
-      throw error
-    }
-
-    return data
-  }
-
-  static async createDefaultPreferences(): Promise<TrackingPreferences> {
-    const { data: userData } = await supabase.auth.getUser()
-    if (!userData.user) throw new Error("User not authenticated")
-
-    const defaultPreferences: Omit<TrackingPreferences, "id" | "created_at" | "updated_at"> = {
-      user_id: userData.user.id,
-      vacation_mode: false,
-      weekly_schedule: {
-        monday: { enabled: true, startTime: "09:00", endTime: "17:00", hours: 8 },
-        tuesday: { enabled: true, startTime: "09:00", endTime: "17:00", hours: 8 },
-        wednesday: { enabled: true, startTime: "09:00", endTime: "17:00", hours: 8 },
-        thursday: { enabled: true, startTime: "09:00", endTime: "17:00", hours: 8 },
-        friday: { enabled: true, startTime: "09:00", endTime: "17:00", hours: 8 },
-        saturday: { enabled: false, startTime: "10:00", endTime: "14:00", hours: 4 },
-        sunday: { enabled: false, startTime: "10:00", endTime: "14:00", hours: 4 },
-      },
-    }
-
-    const { data, error } = await supabase.from("tracking_preferences").insert(defaultPreferences).select().single()
-
-    if (error) {
-      console.error("Error creating default tracking preferences:", error)
       throw error
     }
 
