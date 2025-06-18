@@ -4,16 +4,19 @@ import { useState, useEffect } from "react"
 import { Play, Pause, Square, Briefcase, Users, BookOpen, Dumbbell, Edit3 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { mockCategories } from "@/lib/mock-data"
+import { useCategories } from "@/hooks/use-categories"
+import type { User } from "@supabase/supabase-js"
 
 interface EnhancedBottomTrackingWidgetProps {
-  onAddEntry: (entry: any) => void
+  onAddEntry: (entry: any) => Promise<void>
   isDesktop?: boolean
+  user?: User | null
 }
 
 export default function EnhancedBottomTrackingWidget({
   onAddEntry,
   isDesktop = false,
+  user,
 }: EnhancedBottomTrackingWidgetProps) {
   const [isTracking, setIsTracking] = useState(false)
   const [isPaused, setIsPaused] = useState(false)
@@ -21,6 +24,7 @@ export default function EnhancedBottomTrackingWidget({
   const [elapsedTime, setElapsedTime] = useState(0)
   const [selectedCategory, setSelectedCategory] = useState("")
   const [description, setDescription] = useState("")
+  const { categories } = useCategories(user)
 
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null
@@ -38,8 +42,10 @@ export default function EnhancedBottomTrackingWidget({
 
   const formatTime = (ms: number) => {
     const totalSeconds = Math.floor(ms / 1000)
-    const hours = Math.floor(totalSeconds / 3600)
-    const minutes = Math.floor((totalSeconds % 3600) / 60)
+    // Always round up to the nearest minute (minimum 1 minute)
+    const totalMinutes = Math.max(1, Math.ceil(totalSeconds / 60))
+    const hours = Math.floor(totalMinutes / 60)
+    const minutes = totalMinutes % 60
     const seconds = totalSeconds % 60
 
     return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`
@@ -57,25 +63,29 @@ export default function EnhancedBottomTrackingWidget({
     setIsPaused(!isPaused)
   }
 
-  const stopTracking = () => {
+  const stopTracking = async () => {
     if (startTime) {
       const endTime = new Date()
-      let category = mockCategories.find((c) => c.id === selectedCategory)
+      let category = categories.find((c) => c.id === selectedCategory)
 
       if (!category && description) {
-        category = mockCategories[0]
+        category = categories[0]
       }
 
       if (category) {
-        onAddEntry({
-          categoryId: category.id,
-          categoryName: category.name,
-          categoryColor: category.color,
-          startTime: startTime.toTimeString().slice(0, 5),
-          endTime: endTime.toTimeString().slice(0, 5),
-          description: description || `${category.name} session`,
-          date: new Date().toISOString().split("T")[0],
-        })
+        try {
+          await onAddEntry({
+            categoryId: category.id,
+            categoryName: category.name,
+            categoryColor: category.color,
+            startTime: startTime.toTimeString().slice(0, 5),
+            endTime: endTime.toTimeString().slice(0, 5),
+            description: description || `${category.name} session`,
+            date: new Date().toISOString().split("T")[0],
+          })
+        } catch (error) {
+          console.error("Failed to save time entry:", error)
+        }
       }
     }
 
@@ -87,15 +97,25 @@ export default function EnhancedBottomTrackingWidget({
     setSelectedCategory("")
   }
 
-  const categoryChips = [
-    { id: "1", name: "Work", color: "#3B82F6", icon: Briefcase },
-    { id: "2", name: "Meeting", color: "#8B5CF6", icon: Users },
-    { id: "4", name: "Study", color: "#10B981", icon: BookOpen },
-    { id: "3", name: "Workout", color: "#F59E0B", icon: Dumbbell },
-  ]
+  // Map user's categories to the chip format, or use defaults for mock users
+  const categoryChips =
+    categories.length > 0
+      ? categories.slice(0, 4).map((cat) => ({
+          id: cat.id,
+          name: cat.name,
+          color: cat.color,
+          icon: Briefcase, // Default icon
+        }))
+      : [
+          { id: "1", name: "Work", color: "#3B82F6", icon: Briefcase },
+          { id: "2", name: "Meeting", color: "#8B5CF6", icon: Users },
+          { id: "4", name: "Study", color: "#10B981", icon: BookOpen },
+          { id: "3", name: "Workout", color: "#F59E0B", icon: Dumbbell },
+        ]
 
   if (isTracking) {
-    const selectedCat = mockCategories.find((c) => c.id === selectedCategory)
+    const selectedCat =
+      categories.find((c) => c.id === selectedCategory) || categoryChips.find((c) => c.id === selectedCategory)
 
     return (
       <div
@@ -182,7 +202,9 @@ export default function EnhancedBottomTrackingWidget({
                         // Stop current tracking and create entry
                         if (startTime) {
                           const endTime = new Date()
-                          const currentCategory = mockCategories.find((c) => c.id === selectedCategory)
+                          const currentCategory =
+                            categories.find((c) => c.id === selectedCategory) ||
+                            categoryChips.find((c) => c.id === selectedCategory)
 
                           if (currentCategory) {
                             onAddEntry({
@@ -193,7 +215,7 @@ export default function EnhancedBottomTrackingWidget({
                               endTime: endTime.toTimeString().slice(0, 5),
                               description: description || `${currentCategory.name} session`,
                               date: new Date().toISOString().split("T")[0],
-                            })
+                            }).catch(console.error)
                           }
                         }
 

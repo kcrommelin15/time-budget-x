@@ -5,18 +5,36 @@ import { Calendar, Plus, ChevronDown } from "lucide-react"
 import AddTimeEntryModal from "@/components/add-time-entry-modal"
 import TrackingPreferencesModal from "@/components/tracking-preferences-modal"
 import SimpleDatePickerModal from "@/components/simple-date-picker-modal"
-import { mockTimeEntries } from "@/lib/mock-data"
 import type { TimeEntry } from "@/lib/types"
 import EnhancedBottomTrackingWidget from "@/components/enhanced-bottom-tracking-widget"
 import ZoomableTimeBlock from "@/components/zoomable-time-block"
+import { useTimeEntries } from "@/hooks/use-time-entries"
+import { useCategories } from "@/hooks/use-categories"
+import type { User } from "@supabase/supabase-js"
 
+// Update the interface
 interface TimelineScreenProps {
   isDesktop?: boolean
+  user?: User | null
 }
 
-export default function TimelineScreen({ isDesktop = false }: TimelineScreenProps) {
+// Update the component signature
+export default function TimelineScreen({ isDesktop = false, user }: TimelineScreenProps) {
   const [selectedDate, setSelectedDate] = useState(new Date())
-  const [timeEntries, setTimeEntries] = useState<TimeEntry[]>(mockTimeEntries)
+  // Replace the useState for timeEntries with the hook
+  const {
+    timeEntries,
+    loading: timeEntriesLoading,
+    error: timeEntriesError,
+    addTimeEntry,
+    updateTimeEntry,
+    deleteTimeEntry,
+  } = useTimeEntries(user, selectedDate)
+
+  const { refreshTimeUsage } = useCategories(user)
+
+  // Remove the old useState line:
+  // const [timeEntries, setTimeEntries] = useState<TimeEntry[]>(mockTimeEntries)
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
   const [isPreferencesOpen, setIsPreferencesOpen] = useState(false)
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false)
@@ -37,22 +55,41 @@ export default function TimelineScreen({ isDesktop = false }: TimelineScreenProp
     setSelectedDate(date)
   }
 
-  const handleAddTimeEntry = (newEntry: Omit<TimeEntry, "id">) => {
-    const entry: TimeEntry = {
-      ...newEntry,
-      id: Date.now().toString(),
+  const handleAddTimeEntry = async (newEntry: Omit<TimeEntry, "id">) => {
+    try {
+      await addTimeEntry(newEntry)
+      setIsAddModalOpen(false)
+      setPrefilledEntry(null)
+      // Refresh time usage in categories after adding entry
+      if (refreshTimeUsage) {
+        await refreshTimeUsage()
+      }
+    } catch (error) {
+      console.error("Failed to add time entry:", error)
+      // Don't close the modal on error - let the modal handle the error display
     }
-    setTimeEntries([...timeEntries, entry])
-    setIsAddModalOpen(false)
-    setPrefilledEntry(null)
   }
 
-  const handleEditTimeEntry = (updatedEntry: TimeEntry) => {
-    setTimeEntries(timeEntries.map((entry) => (entry.id === updatedEntry.id ? updatedEntry : entry)))
+  const handleEditTimeEntry = async (updatedEntry: TimeEntry) => {
+    try {
+      await updateTimeEntry(updatedEntry)
+      if (refreshTimeUsage) {
+        await refreshTimeUsage()
+      }
+    } catch (error) {
+      console.error("Failed to update time entry:", error)
+    }
   }
 
-  const handleDeleteTimeEntry = (entryId: string) => {
-    setTimeEntries(timeEntries.filter((entry) => entry.id !== entryId))
+  const handleDeleteTimeEntry = async (entryId: string) => {
+    try {
+      await deleteTimeEntry(entryId)
+      if (refreshTimeUsage) {
+        await refreshTimeUsage()
+      }
+    } catch (error) {
+      console.error("Failed to delete time entry:", error)
+    }
   }
 
   // Handle zoom with scroll wheel (keep functionality but hide controls)
@@ -226,6 +263,11 @@ export default function TimelineScreen({ isDesktop = false }: TimelineScreenProp
       {/* Scrollable Timeline */}
       <div ref={timelineRef} className="overflow-y-auto overflow-x-hidden" style={{ height: timelineHeight }}>
         <div className="p-6 pt-2 space-y-1" style={{ paddingBottom: isDesktop ? "24px" : "32px" }}>
+          {timeEntriesError && (
+            <div className="fixed top-16 left-1/2 transform -translate-x-1/2 bg-red-100 border border-red-400 text-red-700 px-4 py-2 rounded z-50">
+              {timeEntriesError}
+            </div>
+          )}
           {timeSlots.map((time, index) => {
             const occupyingEntry = occupiedSlots.get(time)
             const isFirstSlotOfEntry = occupyingEntry && entrySpans.get(occupyingEntry.id)?.[0] === time
@@ -282,6 +324,8 @@ export default function TimelineScreen({ isDesktop = false }: TimelineScreenProp
         }}
         onAdd={handleAddTimeEntry}
         prefilledEntry={prefilledEntry}
+        user={user}
+        onTimeUsageUpdate={refreshTimeUsage}
       />
 
       <TrackingPreferencesModal isOpen={isPreferencesOpen} onClose={() => setIsPreferencesOpen(false)} />
@@ -295,7 +339,7 @@ export default function TimelineScreen({ isDesktop = false }: TimelineScreenProp
 
       {/* Sticky Footer - Activity Tracking Widget */}
       <div className="sticky bottom-0 z-30">
-        <EnhancedBottomTrackingWidget onAddEntry={handleAddTimeEntry} isDesktop={isDesktop} />
+        <EnhancedBottomTrackingWidget onAddEntry={handleAddTimeEntry} isDesktop={isDesktop} user={user} />
       </div>
     </>
   )
