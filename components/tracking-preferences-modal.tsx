@@ -1,29 +1,28 @@
 "use client"
 
 import type React from "react"
-
 import { useState, useEffect } from "react"
 import { X, Calendar } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
+import { useTrackingPreferences } from "@/hooks/use-tracking-preferences"
+import { TrackingPreferencesService, type DaySchedule } from "@/lib/supabase/tracking-preferences-service"
+import type { User } from "@supabase/supabase-js"
 
 interface TrackingPreferencesModalProps {
   isOpen: boolean
   onClose: () => void
+  user?: User | null
 }
 
-interface DaySchedule {
-  enabled: boolean
-  startTime: string
-  endTime: string
-  hours: number
-}
+export default function TrackingPreferencesModal({ isOpen, onClose, user = null }: TrackingPreferencesModalProps) {
+  const { preferences, loading, error, updateVacationMode, updateWeeklySchedule, getTotalScheduledHours } =
+    useTrackingPreferences(user)
 
-export default function TrackingPreferencesModal({ isOpen, onClose }: TrackingPreferencesModalProps) {
-  const [vacationMode, setVacationMode] = useState(false)
-  const [weeklySchedule, setWeeklySchedule] = useState<Record<string, DaySchedule>>({
+  const [localVacationMode, setLocalVacationMode] = useState(false)
+  const [localWeeklySchedule, setLocalWeeklySchedule] = useState<Record<string, DaySchedule>>({
     monday: { enabled: true, startTime: "09:00", endTime: "17:00", hours: 8 },
     tuesday: { enabled: true, startTime: "09:00", endTime: "17:00", hours: 8 },
     wednesday: { enabled: true, startTime: "09:00", endTime: "17:00", hours: 8 },
@@ -33,6 +32,14 @@ export default function TrackingPreferencesModal({ isOpen, onClose }: TrackingPr
     sunday: { enabled: false, startTime: "10:00", endTime: "14:00", hours: 4 },
   })
 
+  // Sync local state with preferences when they load
+  useEffect(() => {
+    if (preferences) {
+      setLocalVacationMode(preferences.vacation_mode)
+      setLocalWeeklySchedule(preferences.weekly_schedule)
+    }
+  }, [preferences])
+
   // Detect if user is on mobile device
   const isMobile =
     typeof window !== "undefined" &&
@@ -40,26 +47,33 @@ export default function TrackingPreferencesModal({ isOpen, onClose }: TrackingPr
 
   // Calculate total hours from enabled days
   const calculateTotalHours = () => {
-    return Object.values(weeklySchedule).reduce((total, day) => {
+    return Object.values(localWeeklySchedule).reduce((total, day) => {
       return total + (day.enabled ? day.hours : 0)
     }, 0)
   }
 
   // Auto-save whenever preferences change
   useEffect(() => {
-    if (isOpen) {
-      console.log("Auto-saving tracking preferences:", {
-        weeklySchedule,
-        vacationMode,
-        totalHours: calculateTotalHours(),
-      })
+    if (isOpen && preferences && user) {
+      const savePreferences = async () => {
+        try {
+          await updateVacationMode(localVacationMode)
+          await updateWeeklySchedule(localWeeklySchedule)
+        } catch (err) {
+          console.error("Error saving preferences:", err)
+        }
+      }
+
+      // Debounce the save operation
+      const timeoutId = setTimeout(savePreferences, 1000)
+      return () => clearTimeout(timeoutId)
     }
-  }, [weeklySchedule, vacationMode, isOpen])
+  }, [localWeeklySchedule, localVacationMode, isOpen, preferences, user])
 
   if (!isOpen) return null
 
   const updateDaySchedule = (day: string, field: keyof DaySchedule, value: any) => {
-    setWeeklySchedule((prev) => {
+    setLocalWeeklySchedule((prev) => {
       const updated = {
         ...prev,
         [day]: { ...prev[day], [field]: value },
@@ -68,7 +82,7 @@ export default function TrackingPreferencesModal({ isOpen, onClose }: TrackingPr
       // If we're updating time, recalculate hours
       if (field === "startTime" || field === "endTime") {
         const daySchedule = updated[day]
-        const hours = calculateHoursFromTime(
+        const hours = TrackingPreferencesService.calculateHoursFromTime(
           field === "startTime" ? value : daySchedule.startTime,
           field === "endTime" ? value : daySchedule.endTime,
         )
@@ -77,14 +91,6 @@ export default function TrackingPreferencesModal({ isOpen, onClose }: TrackingPr
 
       return updated
     })
-  }
-
-  const calculateHoursFromTime = (startTime: string, endTime: string) => {
-    const [startHour, startMin] = startTime.split(":").map(Number)
-    const [endHour, endMin] = endTime.split(":").map(Number)
-    const startMinutes = startHour * 60 + startMin
-    const endMinutes = endHour * 60 + endMin
-    return (endMinutes - startMinutes) / 60
   }
 
   const handleBackdropClick = (e: React.MouseEvent) => {
@@ -128,13 +134,38 @@ export default function TrackingPreferencesModal({ isOpen, onClose }: TrackingPr
         </div>
 
         <div className="p-4 space-y-6 max-h-[calc(90vh-80px)] overflow-y-auto">
+          {/* Loading State */}
+          {loading && (
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 text-center">
+              <p className="text-blue-700 text-sm">Loading your preferences...</p>
+            </div>
+          )}
+
+          {/* Error State */}
+          {error && (
+            <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-center">
+              <p className="text-red-700 text-sm">{error}</p>
+            </div>
+          )}
+
+          {/* Auth Required */}
+          {!user && (
+            <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-3 text-center">
+              <p className="text-yellow-700 text-sm">Sign in to save your tracking preferences</p>
+            </div>
+          )}
+
           {/* Vacation Mode */}
           <div>
             <div className="flex items-center justify-between mb-2">
               <Label className="text-base font-medium">Vacation mode:</Label>
               <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-600">{vacationMode ? "ON" : "OFF"}</span>
-                <Switch checked={vacationMode} onCheckedChange={setVacationMode} />
+                <span className="text-sm text-gray-600">{localVacationMode ? "ON" : "OFF"}</span>
+                <Switch
+                  checked={localVacationMode}
+                  onCheckedChange={setLocalVacationMode}
+                  disabled={loading || !user}
+                />
               </div>
             </div>
             <p className="text-sm text-gray-600">When enabled, activities will not be tracked or analyzed</p>
@@ -153,12 +184,13 @@ export default function TrackingPreferencesModal({ isOpen, onClose }: TrackingPr
             {/* Daily Schedule */}
             <div className="space-y-3">
               {workDays.map((day) => {
-                const schedule = weeklySchedule[day.id]
+                const schedule = localWeeklySchedule[day.id]
                 return (
                   <div key={day.id} className="flex items-center gap-3">
                     <Switch
                       checked={schedule.enabled}
                       onCheckedChange={(checked) => updateDaySchedule(day.id, "enabled", checked)}
+                      disabled={loading || !user}
                     />
                     <span className="text-sm font-medium w-8">{day.label}</span>
 
@@ -170,6 +202,7 @@ export default function TrackingPreferencesModal({ isOpen, onClose }: TrackingPr
                           value={schedule.startTime}
                           onChange={(e) => updateDaySchedule(day.id, "startTime", e.target.value)}
                           className="w-20 h-8 text-center border border-gray-300 rounded text-xs"
+                          disabled={loading || !user}
                           style={{
                             WebkitAppearance: isMobile ? "none" : "auto",
                           }}
@@ -180,6 +213,7 @@ export default function TrackingPreferencesModal({ isOpen, onClose }: TrackingPr
                           value={schedule.endTime}
                           onChange={(e) => updateDaySchedule(day.id, "endTime", e.target.value)}
                           className="w-20 h-8 text-center border border-gray-300 rounded text-xs"
+                          disabled={loading || !user}
                           style={{
                             WebkitAppearance: isMobile ? "none" : "auto",
                           }}

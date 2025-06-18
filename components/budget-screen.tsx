@@ -10,6 +10,7 @@ import ListStyleCategoryCard from "@/components/list-style-category-card"
 import ArchivedCategoriesSection from "@/components/archived-categories-section"
 import EnhancedAllocationBanner from "@/components/enhanced-allocation-banner"
 import { useCategories } from "@/hooks/use-categories"
+import { useTrackingPreferences } from "@/hooks/use-tracking-preferences"
 import type { Category } from "@/lib/types"
 import type { User } from "@supabase/supabase-js"
 
@@ -35,12 +36,15 @@ export default function BudgetScreen({ isDesktop = false, user = null }: BudgetS
     deleteSubcategory,
   } = useCategories(user)
 
+  const { getTotalScheduledHours } = useTrackingPreferences(user)
+
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
   const [isPreferencesOpen, setIsPreferencesOpen] = useState(false)
   const [isEditMode, setIsEditMode] = useState(false)
 
   const totalBudgeted = categories.reduce((sum, cat) => sum + cat.weeklyBudget, 0)
-  const remainingHours = 168 - totalBudgeted // 168 hours in a week
+  const totalScheduledHours = getTotalScheduledHours()
+  const remainingHours = totalScheduledHours - totalBudgeted
 
   const handleDragEnd = (result: any) => {
     if (!result.destination) return
@@ -155,6 +159,7 @@ export default function BudgetScreen({ isDesktop = false, user = null }: BudgetS
           remainingHours={remainingHours}
           isEditMode={isEditMode}
           onEnterEditMode={() => setIsEditMode(true)}
+          totalScheduledHours={totalScheduledHours}
         />
       )}
 
@@ -209,7 +214,7 @@ export default function BudgetScreen({ isDesktop = false, user = null }: BudgetS
       )}
 
       <AddCategoryModal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} onAdd={handleAddCategory} />
-      <TrackingPreferencesModal isOpen={isPreferencesOpen} onClose={() => setIsPreferencesOpen(false)} />
+      <TrackingPreferencesModal isOpen={isPreferencesOpen} onClose={() => setIsPreferencesOpen(false)} user={user} />
     </div>
   )
 }
