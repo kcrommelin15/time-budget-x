@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { X, Calendar } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -15,7 +15,7 @@ interface TrackingPreferencesModalProps {
   isOpen: boolean
   onClose: () => void
   user?: User | null
-  onPreferencesChange?: () => void // Add callback for when preferences change
+  onPreferencesChange?: () => void
 }
 
 export default function TrackingPreferencesModal({
@@ -37,13 +37,17 @@ export default function TrackingPreferencesModal({
     sunday: { enabled: false, startTime: "10:00", endTime: "14:00", hours: 4 },
   })
 
-  // Sync local state with preferences when they load
+  // Track if we're currently saving to prevent sync conflicts
+  const [isSaving, setIsSaving] = useState(false)
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+
+  // Sync local state with preferences when they load (but not while saving)
   useEffect(() => {
-    if (preferences) {
+    if (preferences && !isSaving) {
       setLocalVacationMode(preferences.vacation_mode)
       setLocalWeeklySchedule(preferences.weekly_schedule)
     }
-  }, [preferences])
+  }, [preferences, isSaving])
 
   // Detect if user is on mobile device
   const isMobile =
@@ -57,11 +61,18 @@ export default function TrackingPreferencesModal({
     }, 0)
   }
 
-  // Auto-save whenever preferences change with immediate callback
+  // Improved auto-save with better state management
   useEffect(() => {
     if (isOpen && preferences && user) {
+      // Clear any existing timeout
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current)
+      }
+
       const savePreferences = async () => {
         try {
+          setIsSaving(true)
+
           await updateVacationMode(localVacationMode)
           await updateWeeklySchedule(localWeeklySchedule)
 
@@ -71,12 +82,21 @@ export default function TrackingPreferencesModal({
           }
         } catch (err) {
           console.error("Error saving preferences:", err)
+        } finally {
+          // Add a small delay before allowing sync again
+          setTimeout(() => setIsSaving(false), 100)
         }
       }
 
-      // Debounce the save operation but trigger callback immediately
-      const timeoutId = setTimeout(savePreferences, 500) // Reduced debounce time
-      return () => clearTimeout(timeoutId)
+      // Debounce the save operation
+      saveTimeoutRef.current = setTimeout(savePreferences, 300) // Reduced for faster response
+    }
+
+    // Cleanup timeout on unmount
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current)
+      }
     }
   }, [
     localWeeklySchedule,
@@ -198,6 +218,7 @@ export default function TrackingPreferencesModal({
             <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl p-3 border border-blue-100 text-center mb-4">
               <div className="text-xl font-bold text-blue-900">{calculateTotalHours()}h</div>
               <div className="text-xs text-blue-700">Total scheduled hours per week</div>
+              {isSaving && <div className="text-xs text-blue-600 mt-1">Saving...</div>}
             </div>
 
             {/* Daily Schedule */}
