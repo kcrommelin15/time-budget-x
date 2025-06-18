@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import {
   TrackingPreferencesService,
   type TrackingPreferences,
@@ -14,29 +14,29 @@ export function useTrackingPreferences(user: User | null) {
   const [error, setError] = useState<string | null>(null)
 
   // Load preferences when user changes
-  useEffect(() => {
+  const loadPreferences = useCallback(async () => {
     if (!user) {
       setPreferences(null)
       setLoading(false)
       return
     }
 
-    const loadPreferences = async () => {
-      try {
-        setLoading(true)
-        setError(null)
-        const trackingPrefs = await TrackingPreferencesService.getTrackingPreferences()
-        setPreferences(trackingPrefs)
-      } catch (err) {
-        console.error("Error loading tracking preferences:", err)
-        setError(err instanceof Error ? err.message : "Failed to load tracking preferences")
-      } finally {
-        setLoading(false)
-      }
+    try {
+      setLoading(true)
+      setError(null)
+      const trackingPrefs = await TrackingPreferencesService.getTrackingPreferences()
+      setPreferences(trackingPrefs)
+    } catch (err) {
+      console.error("Error loading tracking preferences:", err)
+      setError(err instanceof Error ? err.message : "Failed to load tracking preferences")
+    } finally {
+      setLoading(false)
     }
-
-    loadPreferences()
   }, [user])
+
+  useEffect(() => {
+    loadPreferences()
+  }, [loadPreferences])
 
   const updatePreferences = async (
     updates: Partial<Pick<TrackingPreferences, "vacation_mode" | "weekly_schedule">>,
@@ -46,18 +46,15 @@ export function useTrackingPreferences(user: User | null) {
     try {
       setError(null)
 
-      // Optimistically update local state
+      // Update in database first
+      await TrackingPreferencesService.updateTrackingPreferences(updates)
+
+      // Then update local state
       const updatedPreferences = { ...preferences, ...updates }
       setPreferences(updatedPreferences)
-
-      // Update in database
-      await TrackingPreferencesService.updateTrackingPreferences(updates)
     } catch (err) {
       console.error("Error updating tracking preferences:", err)
       setError(err instanceof Error ? err.message : "Failed to update tracking preferences")
-
-      // Revert optimistic update on error
-      setPreferences(preferences)
     }
   }
 
@@ -74,6 +71,11 @@ export function useTrackingPreferences(user: User | null) {
     return TrackingPreferencesService.calculateTotalScheduledHours(preferences.weekly_schedule)
   }
 
+  // Expose refresh function for manual refresh
+  const refreshPreferences = useCallback(() => {
+    loadPreferences()
+  }, [loadPreferences])
+
   return {
     preferences,
     loading,
@@ -82,5 +84,6 @@ export function useTrackingPreferences(user: User | null) {
     updateVacationMode,
     updateWeeklySchedule,
     getTotalScheduledHours,
+    refreshPreferences,
   }
 }

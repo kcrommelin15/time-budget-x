@@ -15,11 +15,16 @@ interface TrackingPreferencesModalProps {
   isOpen: boolean
   onClose: () => void
   user?: User | null
+  onPreferencesChange?: () => void // Add callback for when preferences change
 }
 
-export default function TrackingPreferencesModal({ isOpen, onClose, user = null }: TrackingPreferencesModalProps) {
-  const { preferences, loading, error, updateVacationMode, updateWeeklySchedule, getTotalScheduledHours } =
-    useTrackingPreferences(user)
+export default function TrackingPreferencesModal({
+  isOpen,
+  onClose,
+  user = null,
+  onPreferencesChange,
+}: TrackingPreferencesModalProps) {
+  const { preferences, loading, error, updateVacationMode, updateWeeklySchedule } = useTrackingPreferences(user)
 
   const [localVacationMode, setLocalVacationMode] = useState(false)
   const [localWeeklySchedule, setLocalWeeklySchedule] = useState<Record<string, DaySchedule>>({
@@ -52,23 +57,37 @@ export default function TrackingPreferencesModal({ isOpen, onClose, user = null 
     }, 0)
   }
 
-  // Auto-save whenever preferences change
+  // Auto-save whenever preferences change with immediate callback
   useEffect(() => {
     if (isOpen && preferences && user) {
       const savePreferences = async () => {
         try {
           await updateVacationMode(localVacationMode)
           await updateWeeklySchedule(localWeeklySchedule)
+
+          // Trigger callback to notify parent components
+          if (onPreferencesChange) {
+            onPreferencesChange()
+          }
         } catch (err) {
           console.error("Error saving preferences:", err)
         }
       }
 
-      // Debounce the save operation
-      const timeoutId = setTimeout(savePreferences, 1000)
+      // Debounce the save operation but trigger callback immediately
+      const timeoutId = setTimeout(savePreferences, 500) // Reduced debounce time
       return () => clearTimeout(timeoutId)
     }
-  }, [localWeeklySchedule, localVacationMode, isOpen, preferences, user])
+  }, [
+    localWeeklySchedule,
+    localVacationMode,
+    isOpen,
+    preferences,
+    user,
+    updateVacationMode,
+    updateWeeklySchedule,
+    onPreferencesChange,
+  ])
 
   if (!isOpen) return null
 

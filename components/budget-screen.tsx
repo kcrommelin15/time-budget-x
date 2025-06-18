@@ -36,7 +36,7 @@ export default function BudgetScreen({ isDesktop = false, user = null }: BudgetS
     deleteSubcategory,
   } = useCategories(user)
 
-  const { getTotalScheduledHours } = useTrackingPreferences(user)
+  const { getTotalScheduledHours, refreshPreferences } = useTrackingPreferences(user)
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
   const [isPreferencesOpen, setIsPreferencesOpen] = useState(false)
@@ -45,6 +45,11 @@ export default function BudgetScreen({ isDesktop = false, user = null }: BudgetS
   const totalBudgeted = categories.reduce((sum, cat) => sum + cat.weeklyBudget, 0)
   const totalScheduledHours = getTotalScheduledHours()
   const remainingHours = totalScheduledHours - totalBudgeted
+
+  // Handle preferences change to refresh the data
+  const handlePreferencesChange = () => {
+    refreshPreferences()
+  }
 
   const handleDragEnd = (result: any) => {
     if (!result.destination) return
@@ -214,7 +219,12 @@ export default function BudgetScreen({ isDesktop = false, user = null }: BudgetS
       )}
 
       <AddCategoryModal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} onAdd={handleAddCategory} />
-      <TrackingPreferencesModal isOpen={isPreferencesOpen} onClose={() => setIsPreferencesOpen(false)} user={user} />
+      <TrackingPreferencesModal
+        isOpen={isPreferencesOpen}
+        onClose={() => setIsPreferencesOpen(false)}
+        user={user}
+        onPreferencesChange={handlePreferencesChange}
+      />
     </div>
   )
 }
