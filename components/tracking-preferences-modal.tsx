@@ -2,7 +2,7 @@
 
 import type React from "react"
 import { useState, useEffect, useRef } from "react"
-import { X, Calendar } from "lucide-react"
+import { X, Calendar, Cloud, HardDrive } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -24,7 +24,8 @@ export default function TrackingPreferencesModal({
   user = null,
   onPreferencesChange,
 }: TrackingPreferencesModalProps) {
-  const { preferences, loading, error, updateVacationMode, updateWeeklySchedule } = useTrackingPreferences(user)
+  const { preferences, loading, error, updateVacationMode, updateWeeklySchedule, isUsingLocalStorage } =
+    useTrackingPreferences(user)
 
   const [localVacationMode, setLocalVacationMode] = useState(false)
   const [localWeeklySchedule, setLocalWeeklySchedule] = useState<Record<string, DaySchedule>>({
@@ -61,9 +62,9 @@ export default function TrackingPreferencesModal({
     }, 0)
   }
 
-  // Improved auto-save with better state management
+  // Auto-save with better state management (works for both authenticated and non-authenticated)
   useEffect(() => {
-    if (isOpen && preferences && user) {
+    if (isOpen && preferences) {
       // Clear any existing timeout
       if (saveTimeoutRef.current) {
         clearTimeout(saveTimeoutRef.current)
@@ -89,7 +90,7 @@ export default function TrackingPreferencesModal({
       }
 
       // Debounce the save operation
-      saveTimeoutRef.current = setTimeout(savePreferences, 300) // Reduced for faster response
+      saveTimeoutRef.current = setTimeout(savePreferences, 300)
     }
 
     // Cleanup timeout on unmount
@@ -103,7 +104,6 @@ export default function TrackingPreferencesModal({
     localVacationMode,
     isOpen,
     preferences,
-    user,
     updateVacationMode,
     updateWeeklySchedule,
     onPreferencesChange,
@@ -187,10 +187,28 @@ export default function TrackingPreferencesModal({
             </div>
           )}
 
-          {/* Auth Required */}
-          {!user && (
-            <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-3 text-center">
-              <p className="text-yellow-700 text-sm">Sign in to save your tracking preferences</p>
+          {/* Storage Status */}
+          {!loading && (
+            <div
+              className={`rounded-xl p-3 text-center ${
+                isUsingLocalStorage ? "bg-amber-50 border border-amber-200" : "bg-green-50 border border-green-200"
+              }`}
+            >
+              <div className="flex items-center justify-center gap-2 mb-1">
+                {isUsingLocalStorage ? (
+                  <HardDrive className="w-4 h-4 text-amber-600" />
+                ) : (
+                  <Cloud className="w-4 h-4 text-green-600" />
+                )}
+                <p className={`text-sm font-medium ${isUsingLocalStorage ? "text-amber-700" : "text-green-700"}`}>
+                  {isUsingLocalStorage ? "Stored locally" : "Synced to cloud"}
+                </p>
+              </div>
+              <p className={`text-xs ${isUsingLocalStorage ? "text-amber-600" : "text-green-600"}`}>
+                {isUsingLocalStorage
+                  ? "Sign in to sync your preferences across devices"
+                  : "Your preferences are saved to your account"}
+              </p>
             </div>
           )}
 
@@ -200,11 +218,7 @@ export default function TrackingPreferencesModal({
               <Label className="text-base font-medium">Vacation mode:</Label>
               <div className="flex items-center gap-2">
                 <span className="text-sm text-gray-600">{localVacationMode ? "ON" : "OFF"}</span>
-                <Switch
-                  checked={localVacationMode}
-                  onCheckedChange={setLocalVacationMode}
-                  disabled={loading || !user}
-                />
+                <Switch checked={localVacationMode} onCheckedChange={setLocalVacationMode} disabled={loading} />
               </div>
             </div>
             <p className="text-sm text-gray-600">When enabled, activities will not be tracked or analyzed</p>
@@ -230,7 +244,7 @@ export default function TrackingPreferencesModal({
                     <Switch
                       checked={schedule.enabled}
                       onCheckedChange={(checked) => updateDaySchedule(day.id, "enabled", checked)}
-                      disabled={loading || !user}
+                      disabled={loading}
                     />
                     <span className="text-sm font-medium w-8">{day.label}</span>
 
@@ -242,7 +256,7 @@ export default function TrackingPreferencesModal({
                           value={schedule.startTime}
                           onChange={(e) => updateDaySchedule(day.id, "startTime", e.target.value)}
                           className="w-20 h-8 text-center border border-gray-300 rounded text-xs"
-                          disabled={loading || !user}
+                          disabled={loading}
                           style={{
                             WebkitAppearance: isMobile ? "none" : "auto",
                           }}
@@ -253,7 +267,7 @@ export default function TrackingPreferencesModal({
                           value={schedule.endTime}
                           onChange={(e) => updateDaySchedule(day.id, "endTime", e.target.value)}
                           className="w-20 h-8 text-center border border-gray-300 rounded text-xs"
-                          disabled={loading || !user}
+                          disabled={loading}
                           style={{
                             WebkitAppearance: isMobile ? "none" : "auto",
                           }}
