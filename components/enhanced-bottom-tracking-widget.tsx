@@ -1,19 +1,22 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Play, Pause, Square, Briefcase, Users, BookOpen, Dumbbell, Edit3 } from "lucide-react"
+import { Play, Pause, Square, Briefcase, Edit3 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { mockCategories } from "@/lib/mock-data"
+import { useCategoriesQuery } from "@/hooks/use-categories-query"
+import type { User } from "@supabase/supabase-js"
 
 interface EnhancedBottomTrackingWidgetProps {
-  onAddEntry: (entry: any) => void
+  onAddEntry: (entry: any) => Promise<void>
   isDesktop?: boolean
+  user?: User | null
 }
 
 export default function EnhancedBottomTrackingWidget({
   onAddEntry,
   isDesktop = false,
+  user,
 }: EnhancedBottomTrackingWidgetProps) {
   const [isTracking, setIsTracking] = useState(false)
   const [isPaused, setIsPaused] = useState(false)
@@ -21,6 +24,9 @@ export default function EnhancedBottomTrackingWidget({
   const [elapsedTime, setElapsedTime] = useState(0)
   const [selectedCategory, setSelectedCategory] = useState("")
   const [description, setDescription] = useState("")
+
+  // Use the React Query hook instead of the old hook
+  const { categories, loading: categoriesLoading } = useCategoriesQuery(user)
 
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null
@@ -38,8 +44,10 @@ export default function EnhancedBottomTrackingWidget({
 
   const formatTime = (ms: number) => {
     const totalSeconds = Math.floor(ms / 1000)
-    const hours = Math.floor(totalSeconds / 3600)
-    const minutes = Math.floor((totalSeconds % 3600) / 60)
+    // Always round up to the nearest minute (minimum 1 minute)
+    const totalMinutes = Math.max(1, Math.ceil(totalSeconds / 60))
+    const hours = Math.floor(totalMinutes / 60)
+    const minutes = totalMinutes % 60
     const seconds = totalSeconds % 60
 
     return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`
@@ -57,25 +65,29 @@ export default function EnhancedBottomTrackingWidget({
     setIsPaused(!isPaused)
   }
 
-  const stopTracking = () => {
+  const stopTracking = async () => {
     if (startTime) {
       const endTime = new Date()
-      let category = mockCategories.find((c) => c.id === selectedCategory)
+      let category = categories.find((c) => c.id === selectedCategory)
 
       if (!category && description) {
-        category = mockCategories[0]
+        category = categories[0]
       }
 
       if (category) {
-        onAddEntry({
-          categoryId: category.id,
-          categoryName: category.name,
-          categoryColor: category.color,
-          startTime: startTime.toTimeString().slice(0, 5),
-          endTime: endTime.toTimeString().slice(0, 5),
-          description: description || `${category.name} session`,
-          date: new Date().toISOString().split("T")[0],
-        })
+        try {
+          await onAddEntry({
+            categoryId: category.id,
+            categoryName: category.name,
+            categoryColor: category.color,
+            startTime: startTime.toTimeString().slice(0, 5),
+            endTime: endTime.toTimeString().slice(0, 5),
+            description: description || `${category.name} session`,
+            date: new Date().toISOString().split("T")[0],
+          })
+        } catch (error) {
+          console.error("Failed to save time entry:", error)
+        }
       }
     }
 
@@ -87,15 +99,22 @@ export default function EnhancedBottomTrackingWidget({
     setSelectedCategory("")
   }
 
-  const categoryChips = [
-    { id: "1", name: "Work", color: "#3B82F6", icon: Briefcase },
-    { id: "2", name: "Meeting", color: "#8B5CF6", icon: Users },
-    { id: "4", name: "Study", color: "#10B981", icon: BookOpen },
-    { id: "3", name: "Workout", color: "#F59E0B", icon: Dumbbell },
-  ]
+  // Only show category chips when we have real data (not loading and categories exist)
+  const shouldShowCategories = !categoriesLoading && categories.length > 0
+
+  // Map user's categories to the chip format, or use empty array if not ready
+  const categoryChips = shouldShowCategories
+    ? categories.slice(0, 4).map((cat) => ({
+        id: cat.id,
+        name: cat.name,
+        color: cat.color,
+        icon: Briefcase, // Default icon
+      }))
+    : []
 
   if (isTracking) {
-    const selectedCat = mockCategories.find((c) => c.id === selectedCategory)
+    const selectedCat =
+      categories.find((c) => c.id === selectedCategory) || categoryChips.find((c) => c.id === selectedCategory)
 
     return (
       <div
@@ -166,60 +185,66 @@ export default function EnhancedBottomTrackingWidget({
             </Button>
           </div>
 
-          {/* Quick Category Switch */}
+          {/* Quick Category Switch - maintain consistent height */}
           <div className="pt-2">
             <p className="text-xs text-gray-500 text-center mb-3">Switch activity:</p>
-            <div className="flex gap-2 justify-center">
-              {categoryChips.map((category) => {
-                const IconComponent = category.icon
-                return (
-                  <Button
-                    key={category.id}
-                    variant={selectedCategory === category.id ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => {
-                      if (selectedCategory !== category.id) {
-                        // Stop current tracking and create entry
-                        if (startTime) {
-                          const endTime = new Date()
-                          const currentCategory = mockCategories.find((c) => c.id === selectedCategory)
+            <div className="min-h-[40px] flex items-start justify-center">
+              {shouldShowCategories && (
+                <div className="flex gap-2">
+                  {categoryChips.map((category) => {
+                    const IconComponent = category.icon
+                    return (
+                      <Button
+                        key={category.id}
+                        variant={selectedCategory === category.id ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => {
+                          if (selectedCategory !== category.id) {
+                            // Stop current tracking and create entry
+                            if (startTime) {
+                              const endTime = new Date()
+                              const currentCategory =
+                                categories.find((c) => c.id === selectedCategory) ||
+                                categoryChips.find((c) => c.id === selectedCategory)
 
-                          if (currentCategory) {
-                            onAddEntry({
-                              categoryId: selectedCategory,
-                              categoryName: currentCategory.name,
-                              categoryColor: currentCategory.color,
-                              startTime: startTime.toTimeString().slice(0, 5),
-                              endTime: endTime.toTimeString().slice(0, 5),
-                              description: description || `${currentCategory.name} session`,
-                              date: new Date().toISOString().split("T")[0],
-                            })
+                              if (currentCategory) {
+                                onAddEntry({
+                                  categoryId: selectedCategory,
+                                  categoryName: currentCategory.name,
+                                  categoryColor: currentCategory.color,
+                                  startTime: startTime.toTimeString().slice(0, 5),
+                                  endTime: endTime.toTimeString().slice(0, 5),
+                                  description: description || `${currentCategory.name} session`,
+                                  date: new Date().toISOString().split("T")[0],
+                                }).catch(console.error)
+                              }
+                            }
+
+                            // Start new tracking session
+                            setSelectedCategory(category.id)
+                            setStartTime(new Date())
+                            setElapsedTime(0)
+                            setIsPaused(false)
                           }
+                        }}
+                        className={`rounded-2xl px-3 py-2 transition-all duration-200 ${
+                          selectedCategory === category.id
+                            ? "text-white shadow-lg scale-105"
+                            : "border-gray-200 bg-gray-50 hover:bg-white hover:scale-102"
+                        }`}
+                        style={
+                          selectedCategory === category.id
+                            ? { backgroundColor: category.color }
+                            : { borderColor: `${category.color}40`, color: category.color }
                         }
-
-                        // Start new tracking session
-                        setSelectedCategory(category.id)
-                        setStartTime(new Date())
-                        setElapsedTime(0)
-                        setIsPaused(false)
-                      }
-                    }}
-                    className={`rounded-2xl px-3 py-2 transition-all duration-200 ${
-                      selectedCategory === category.id
-                        ? "text-white shadow-lg scale-105"
-                        : "border-gray-200 bg-gray-50 hover:bg-white hover:scale-102"
-                    }`}
-                    style={
-                      selectedCategory === category.id
-                        ? { backgroundColor: category.color }
-                        : { borderColor: `${category.color}40`, color: category.color }
-                    }
-                  >
-                    <IconComponent className="w-4 h-4 mr-1" />
-                    {category.name}
-                  </Button>
-                )
-              })}
+                      >
+                        <IconComponent className="w-4 h-4 mr-1" />
+                        {category.name}
+                      </Button>
+                    )
+                  })}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -234,31 +259,35 @@ export default function EnhancedBottomTrackingWidget({
       } bg-white/95 backdrop-blur-xl rounded-t-3xl shadow-2xl border-t border-gray-200`}
     >
       <div className="p-6 space-y-4">
-        {/* Enhanced Category Chips */}
-        <div className="flex flex-wrap gap-3 justify-center">
-          {categoryChips.map((category) => {
-            const IconComponent = category.icon
-            return (
-              <Button
-                key={category.id}
-                variant={selectedCategory === category.id ? "default" : "outline"}
-                onClick={() => setSelectedCategory(selectedCategory === category.id ? "" : category.id)}
-                className={`rounded-2xl px-4 py-3 h-12 transition-all duration-200 ${
-                  selectedCategory === category.id
-                    ? "text-white shadow-lg scale-105"
-                    : "border-gray-200 bg-gray-50 hover:bg-white hover:scale-102"
-                }`}
-                style={
-                  selectedCategory === category.id
-                    ? { backgroundColor: category.color }
-                    : { borderColor: `${category.color}40`, color: category.color }
-                }
-              >
-                <IconComponent className="w-5 h-5 mr-2" />
-                <span className="font-medium">{category.name}</span>
-              </Button>
-            )
-          })}
+        {/* Enhanced Category Chips - maintain consistent height */}
+        <div className="min-h-[60px] flex items-start justify-center">
+          {shouldShowCategories && (
+            <div className="flex flex-wrap gap-3">
+              {categoryChips.map((category) => {
+                const IconComponent = category.icon
+                return (
+                  <Button
+                    key={category.id}
+                    variant={selectedCategory === category.id ? "default" : "outline"}
+                    onClick={() => setSelectedCategory(selectedCategory === category.id ? "" : category.id)}
+                    className={`rounded-2xl px-4 py-3 h-12 transition-all duration-200 ${
+                      selectedCategory === category.id
+                        ? "text-white shadow-lg scale-105"
+                        : "border-gray-200 bg-gray-50 hover:bg-white hover:scale-102"
+                    }`}
+                    style={
+                      selectedCategory === category.id
+                        ? { backgroundColor: category.color }
+                        : { borderColor: `${category.color}40`, color: category.color }
+                    }
+                  >
+                    <IconComponent className="w-5 h-5 mr-2" />
+                    <span className="font-medium">{category.name}</span>
+                  </Button>
+                )
+              })}
+            </div>
+          )}
         </div>
 
         {/* Start Button */}

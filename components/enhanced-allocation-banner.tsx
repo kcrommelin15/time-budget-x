@@ -7,12 +7,14 @@ interface EnhancedAllocationBannerProps {
   remainingHours: number
   isEditMode: boolean
   onEnterEditMode: () => void
+  totalScheduledHours?: number
 }
 
 export default function EnhancedAllocationBanner({
   remainingHours,
   isEditMode,
   onEnterEditMode,
+  totalScheduledHours = 168,
 }: EnhancedAllocationBannerProps) {
   const isOverAllocated = remainingHours < 0
   const isUnderAllocated = remainingHours > 0
@@ -41,9 +43,8 @@ export default function EnhancedAllocationBanner({
   }
 
   const getProgressPercentage = () => {
-    const totalWeekHours = 168
-    const allocatedHours = totalWeekHours - Math.abs(remainingHours)
-    return Math.min(100, (allocatedHours / totalWeekHours) * 100)
+    const allocatedHours = totalScheduledHours - Math.abs(remainingHours)
+    return Math.min(100, (allocatedHours / totalScheduledHours) * 100)
   }
 
   return (
@@ -86,7 +87,7 @@ export default function EnhancedAllocationBanner({
                 <div className="flex items-center gap-2 text-sm">
                   <TrendingUp className={`w-4 h-4 ${isOverAllocated ? "text-red-600" : "text-green-600"}`} />
                   <span className={`font-medium ${isOverAllocated ? "text-red-700" : "text-blue-700"}`}>
-                    {getProgressPercentage().toFixed(0)}% of 168h weekly capacity allocated
+                    {getProgressPercentage().toFixed(0)}% of {totalScheduledHours}h weekly capacity allocated
                   </span>
                 </div>
               </div>

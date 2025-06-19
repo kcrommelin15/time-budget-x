@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { Draggable } from "@hello-pangea/dnd"
-import { GripVertical, Plus, Archive, MoreHorizontal, Edit } from "lucide-react"
+import { Edit, MoreHorizontal, Plus, Trash2, GripVertical } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import EditCategoryModal from "@/components/edit-category-modal"
@@ -18,6 +18,7 @@ interface ListStyleCategoryCardProps {
   isEditMode: boolean
   onEdit: (category: Category) => void
   onArchive: (categoryId: string) => void
+  onDelete: (categoryId: string) => void
   onQuickBudgetEdit: (categoryId: string, newBudget: number) => void
   onSubcategoryReorder: (categoryId: string, subcategories: any[]) => void
   onSubcategoryEdit: (categoryId: string, subcategoryName: string, newBudget: number) => void
@@ -31,6 +32,7 @@ export default function ListStyleCategoryCard({
   isEditMode,
   onEdit,
   onArchive,
+  onDelete,
   onQuickBudgetEdit,
   onSubcategoryReorder,
   onSubcategoryEdit,
@@ -99,11 +101,6 @@ export default function ListStyleCategoryCard({
     setShowArchiveConfirm(true)
   }
 
-  const handleArchiveConfirm = () => {
-    onArchive(category.id)
-    setShowArchiveConfirm(false)
-  }
-
   const handleEditClick = () => {
     setShowDropdown(false)
     setIsEditModalOpen(true)
@@ -119,6 +116,11 @@ export default function ListStyleCategoryCard({
     budget: category.weeklyBudget,
     timeUsed: category.timeUsed,
     goalDirection: category.goalDirection,
+  }
+
+  const handleArchiveConfirm = () => {
+    setShowArchiveConfirm(false)
+    onArchive(category.id)
   }
 
   return (
@@ -145,7 +147,7 @@ export default function ListStyleCategoryCard({
                   <h3 className="font-semibold text-base text-gray-900 truncate">{category.name}</h3>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 relative">
                   {/* Goal direction text - fixed width container for consistent alignment */}
                   <div className="w-16 text-right">
                     {category.goalDirection && (
@@ -206,14 +208,17 @@ export default function ListStyleCategoryCard({
                         className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2"
                       >
                         <Edit className="w-4 h-4" />
-                        Edit
+                        Edit Category
                       </button>
                       <button
-                        onClick={handleArchiveClick}
-                        className="w-full px-4 py-2 text-left text-sm hover:bg-orange-50 text-orange-600 flex items-center gap-2"
+                        onClick={() => {
+                          setShowDropdown(false)
+                          onDelete(category.id)
+                        }}
+                        className="w-full px-4 py-2 text-left text-sm hover:bg-red-50 text-red-600 flex items-center gap-2"
                       >
-                        <Archive className="w-4 h-4" />
-                        Archive
+                        <Trash2 className="w-4 h-4" />
+                        Delete
                       </button>
                     </div>
                   )}
@@ -274,38 +279,6 @@ export default function ListStyleCategoryCard({
           </div>
         )}
       </Draggable>
-
-      {/* Archive Confirmation Modal */}
-      {showArchiveConfirm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-3xl w-full max-w-sm">
-            <div className="p-6">
-              <div className="text-center mb-6">
-                <div className="w-16 h-16 bg-orange-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                  <Archive className="w-8 h-8 text-orange-600" />
-                </div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">Archive Category?</h3>
-                <p className="text-gray-600">
-                  Are you sure you want to archive "{category.name}"? You can restore it later from the archived
-                  section.
-                </p>
-              </div>
-
-              <div className="flex gap-3">
-                <Button onClick={() => setShowArchiveConfirm(false)} variant="outline" className="flex-1 rounded-2xl">
-                  Cancel
-                </Button>
-                <Button
-                  onClick={handleArchiveConfirm}
-                  className="flex-1 rounded-2xl bg-orange-600 hover:bg-orange-700 text-white"
-                >
-                  Archive
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Click outside to close dropdown */}
       {showDropdown && <div className="fixed inset-0 z-40" onClick={() => setShowDropdown(false)} />}

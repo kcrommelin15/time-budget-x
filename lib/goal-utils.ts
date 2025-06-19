@@ -23,16 +23,20 @@ export function calculateWeekProgress(): number {
   return Math.min(1, totalMinutesSinceMonday / totalMinutesInWeek)
 }
 
-// Update the formatTime function to optionally omit "00m"
-export function formatTime(hours: number, omitZeroMinutes = false): string {
-  const h = Math.floor(hours)
-  const m = Math.round((hours - h) * 60)
+export function formatTime(hours: number, showMinutes = false): string {
+  // Always round up to the nearest minute
+  const totalMinutes = Math.ceil(hours * 60)
+  const wholeHours = Math.floor(totalMinutes / 60)
+  const remainingMinutes = totalMinutes % 60
 
-  if (omitZeroMinutes && m === 0) {
-    return `${h}h`
+  if (showMinutes || remainingMinutes > 0) {
+    if (wholeHours > 0) {
+      return remainingMinutes > 0 ? `${wholeHours}h ${remainingMinutes}m` : `${wholeHours}h`
+    }
+    return `${remainingMinutes}m`
   }
 
-  return `${h}h ${m.toString().padStart(2, "0")}m`
+  return wholeHours > 0 ? `${wholeHours}h` : "0h"
 }
 
 // Update analyzeSubcategory to use the new formatTime function consistently
@@ -205,4 +209,51 @@ export function analyzeSubcategoryProgress(subcategory: Subcategory): Subcategor
 export function getStatusColor(status: GoalStatus): string {
   const colors = getStatusColors(status)
   return colors.fill
+}
+
+export function calculateProgress(timeUsed: number, budget: number): number {
+  if (budget === 0) return 0
+  return Math.min((timeUsed / budget) * 100, 100)
+}
+
+export function getProgressColor(progress: number, goalDirection: "minimize" | "maximize"): string {
+  if (goalDirection === "minimize") {
+    if (progress <= 50) return "bg-green-500"
+    if (progress <= 80) return "bg-yellow-500"
+    return "bg-red-500"
+  } else {
+    if (progress >= 100) return "bg-green-500"
+    if (progress >= 80) return "bg-yellow-500"
+    return "bg-red-500"
+  }
+}
+
+export function getStatusText(progress: number, goalDirection: "minimize" | "maximize"): string {
+  if (goalDirection === "minimize") {
+    if (progress <= 50) return "On track"
+    if (progress <= 80) return "Watch out"
+    return "Over budget"
+  } else {
+    if (progress >= 100) return "Goal achieved"
+    if (progress >= 80) return "Almost there"
+    return "Keep going"
+  }
+}
+
+// Helper function to round time up to nearest minute
+export function roundTimeUpToMinute(timeInHours: number): number {
+  const totalMinutes = Math.ceil(timeInHours * 60)
+  return totalMinutes / 60 // Convert back to hours
+}
+
+// Helper function to calculate duration and round up to nearest minute
+export function calculateDurationInMinutes(startTime: string, endTime: string): number {
+  const [startHour, startMin] = startTime.split(":").map(Number)
+  const [endHour, endMin] = endTime.split(":").map(Number)
+  const startMinutes = startHour * 60 + startMin
+  const endMinutes = endHour * 60 + endMin
+  const durationMinutes = endMinutes - startMinutes
+
+  // Always round up to at least 1 minute
+  return Math.max(1, Math.ceil(durationMinutes))
 }
