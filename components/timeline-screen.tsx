@@ -3,7 +3,7 @@
 import type React from "react"
 
 import { useState, useRef } from "react"
-import { Calendar, Plus, ChevronDown } from 'lucide-react'
+import { Calendar, Plus, ChevronDown } from "lucide-react"
 import AddTimeEntryModal from "@/components/add-time-entry-modal"
 import TrackingPreferencesModal from "@/components/tracking-preferences-modal"
 import SimpleDatePickerModal from "@/components/simple-date-picker-modal"
@@ -119,16 +119,13 @@ export default function TimelineScreen({ isDesktop = false, user }: TimelineScre
     const top = minutesToPixels(startMinutes)
     const height = minutesToPixels(durationMinutes)
 
-    // Set minimum height based on duration for very short events
-    let minHeight = 20
-    if (durationMinutes >= 15) minHeight = 32
-    if (durationMinutes >= 30) minHeight = 48
-    if (durationMinutes >= 60) minHeight = 80
+    // Ensure minimum height for visibility but keep it proportional
+    const minHeight = Math.max(height, 16) // Very small minimum for short events
 
     return {
       position: "absolute" as const,
       top: `${top}px`,
-      height: `${Math.max(height, minHeight)}px`,
+      height: `${minHeight}px`,
       left: "0px",
       right: "0px",
       zIndex: 10,
@@ -306,17 +303,23 @@ export default function TimelineScreen({ isDesktop = false, user }: TimelineScre
                   })()}
 
                 {/* Time Entries */}
-                {todaysEntries.map((entry) => (
-                  <div key={entry.id} style={getEntryStyle(entry)} className="px-2">
-                    <ZoomableTimeBlock
-                      entry={entry}
-                      onEdit={handleEditTimeEntry}
-                      onDelete={handleDeleteTimeEntry}
-                      zoomLevel={1}
-                      slotHeight={0} // Not used in absolute positioning
-                    />
-                  </div>
-                ))}
+                {todaysEntries.map((entry) => {
+                  const startMinutes = timeToMinutes(entry.startTime)
+                  const endMinutes = timeToMinutes(entry.endTime)
+                  const durationMinutes = endMinutes - startMinutes
+
+                  return (
+                    <div key={entry.id} style={getEntryStyle(entry)} className="px-2">
+                      <ZoomableTimeBlock
+                        entry={entry}
+                        onEdit={handleEditTimeEntry}
+                        onDelete={handleDeleteTimeEntry}
+                        zoomLevel={1}
+                        slotHeight={durationMinutes} // Pass actual duration in minutes
+                      />
+                    </div>
+                  )
+                })}
 
                 {/* Click Areas for Adding Events */}
                 <div className="absolute inset-0 pointer-events-none">

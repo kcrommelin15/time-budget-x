@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Edit, Check, X, Clock, MoreHorizontal, Trash2 } from 'lucide-react'
+import { Edit, Check, X, Clock, MoreHorizontal, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -29,8 +29,10 @@ export default function ZoomableTimeBlock({ entry, onEdit, onDelete, zoomLevel, 
     description: entry.description,
   })
 
-  // Calculate duration in minutes
+  // Calculate duration in minutes - use slotHeight if provided, otherwise calculate
   const getDurationMinutes = () => {
+    if (slotHeight > 0) return slotHeight // Use passed duration
+
     const [startHour, startMin] = entry.startTime.split(":").map(Number)
     const [endHour, endMin] = entry.endTime.split(":").map(Number)
     const startMinutes = startHour * 60 + startMin
@@ -154,10 +156,11 @@ export default function ZoomableTimeBlock({ entry, onEdit, onDelete, zoomLevel, 
   if (durationMinutes < 15) {
     return (
       <div
-        className="border-l-4 bg-white/95 backdrop-blur-sm rounded-r-lg px-2 py-1 shadow-lg hover:shadow-xl transition-all duration-300 group cursor-pointer border border-gray-200/60 h-full flex items-center"
+        className="border-l-4 bg-white/95 backdrop-blur-sm rounded-r-lg px-2 py-1 shadow-lg hover:shadow-xl transition-all duration-300 group cursor-pointer border border-gray-200/60 h-full flex items-center overflow-hidden"
         style={{
           borderLeftColor: entry.categoryColor,
-          minHeight: "20px",
+          minHeight: "16px",
+          maxHeight: "24px",
         }}
         onClick={() => setIsEditing(true)}
         title={`${entry.categoryName} (${entry.startTime} - ${entry.endTime}, ${getDuration()})`}
@@ -231,9 +234,7 @@ export default function ZoomableTimeBlock({ entry, onEdit, onDelete, zoomLevel, 
             <p className="text-xs text-gray-600 mb-1">
               {entry.startTime} - {entry.endTime} | {getDuration()}
             </p>
-            {entry.description && (
-              <p className="text-xs text-gray-500 truncate">{entry.description}</p>
-            )}
+            {entry.description && <p className="text-xs text-gray-500 truncate">{entry.description}</p>}
           </div>
           <div className="flex items-center gap-1 ml-2">
             <Button
