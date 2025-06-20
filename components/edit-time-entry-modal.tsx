@@ -53,39 +53,86 @@ export default function EditTimeEntryModal({
     },
   })
 
-  // Update form when entry changes
+  // Reset form when modal opens/closes
   useEffect(() => {
-    if (entry && isOpen) {
+    if (!isOpen) {
+      reset()
+      setSelectedCategory("")
+      setSelectedSubcategory("")
+      setValidationError(null)
+      setSelectedCat(null)
+      setSubcategories([])
+    }
+  }, [isOpen, reset])
+
+  // Update form when entry changes and categories are loaded
+  useEffect(() => {
+    if (entry && isOpen && categories.length > 0) {
+      console.log("Setting up form with entry:", entry)
+      console.log("Available categories:", categories)
+
+      // Set form values
       setValue("startTime", entry.startTime)
       setValue("endTime", entry.endTime)
       setValue("description", entry.description || "")
 
-      // Set category - try to find by ID first, then by name as fallback
-      const categoryById = categories.find((c) => c.id === entry.categoryId)
-      const categoryByName = categories.find((c) => c.name === entry.categoryName)
-      const foundCategory = categoryById || categoryByName
+      // Find category - try multiple approaches
+      let foundCategory = null
+
+      // First try by ID
+      if (entry.categoryId) {
+        foundCategory = categories.find((c) => c.id === entry.categoryId)
+        console.log("Found category by ID:", foundCategory)
+      }
+
+      // If not found by ID, try by name
+      if (!foundCategory && entry.categoryName) {
+        foundCategory = categories.find((c) => c.name === entry.categoryName)
+        console.log("Found category by name:", foundCategory)
+      }
 
       if (foundCategory) {
+        console.log("Setting category:", foundCategory.id)
         setSelectedCategory(foundCategory.id)
-      }
 
-      // Set subcategory if it exists
-      if (entry.subcategory) {
-        setSelectedSubcategory(entry.subcategory)
+        // Set subcategory if it exists and category has subcategories
+        if (entry.subcategory && foundCategory.subcategories?.length > 0) {
+          const foundSubcategory = foundCategory.subcategories.find((sub) => sub.name === entry.subcategory)
+          if (foundSubcategory) {
+            console.log("Setting subcategory:", entry.subcategory)
+            setSelectedSubcategory(entry.subcategory)
+          }
+        }
+      } else {
+        console.warn("Could not find category for entry:", {
+          categoryId: entry.categoryId,
+          categoryName: entry.categoryName,
+          availableCategories: categories.map((c) => ({ id: c.id, name: c.name })),
+        })
       }
     }
-  }, [entry, isOpen, setValue, categories])
+  }, [entry, isOpen, categories, setValue])
 
+  // Update subcategories when category changes
   useEffect(() => {
-    if (selectedCategory) {
+    if (selectedCategory && categories.length > 0) {
       const cat = categories.find((c) => c.id === selectedCategory)
+      console.log("Selected category changed:", cat)
       setSelectedCat(cat)
       setSubcategories(cat?.subcategories || [])
+
+      // Clear subcategory if the new category doesn't have the current subcategory
+      if (selectedSubcategory && cat?.subcategories) {
+        const hasSubcategory = cat.subcategories.some((sub) => sub.name === selectedSubcategory)
+        if (!hasSubcategory) {
+          setSelectedSubcategory("")
+        }
+      }
     } else {
       setSelectedCat(null)
       setSubcategories([])
     }
-  }, [selectedCategory, categories])
+  }, [selectedCategory, categories, selectedSubcategory])
 
   if (!isOpen || !entry) return null
 
@@ -119,11 +166,6 @@ export default function EditTimeEntryModal({
         subcategory: selectedSubcategory || undefined,
       })
 
-      // Only reset and close if successful
-      reset()
-      setSelectedCategory("")
-      setSelectedSubcategory("")
-      setValidationError(null)
       onClose()
     } catch (error) {
       console.error("Error updating time entry:", error)
@@ -134,10 +176,6 @@ export default function EditTimeEntryModal({
   const handleDelete = async () => {
     try {
       await onDelete(entry.id)
-      reset()
-      setSelectedCategory("")
-      setSelectedSubcategory("")
-      setValidationError(null)
       onClose()
     } catch (error) {
       console.error("Error deleting time entry:", error)
@@ -146,10 +184,6 @@ export default function EditTimeEntryModal({
   }
 
   const handleClose = () => {
-    reset()
-    setSelectedCategory("")
-    setSelectedSubcategory("")
-    setValidationError(null)
     onClose()
   }
 
