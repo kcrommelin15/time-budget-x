@@ -5,6 +5,7 @@ import type React from "react"
 import { useState, useRef } from "react"
 import { Calendar, Plus, ChevronDown } from "lucide-react"
 import AddTimeEntryModal from "@/components/add-time-entry-modal"
+import EditTimeEntryModal from "@/components/edit-time-entry-modal"
 import TrackingPreferencesModal from "@/components/tracking-preferences-modal"
 import SimpleDatePickerModal from "@/components/simple-date-picker-modal"
 import type { TimeEntry } from "@/lib/types"
@@ -37,6 +38,8 @@ export default function TimelineScreen({ isDesktop = false, user }: TimelineScre
   const { refreshTimeUsage } = useCategoriesQuery(user)
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false)
+  const [editingEntry, setEditingEntry] = useState<TimeEntry | null>(null)
   const [isPreferencesOpen, setIsPreferencesOpen] = useState(false)
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false)
   const [prefilledEntry, setPrefilledEntry] = useState<{ startTime: string; endTime: string } | null>(null)
@@ -70,7 +73,12 @@ export default function TimelineScreen({ isDesktop = false, user }: TimelineScre
     }
   }
 
-  const handleEditTimeEntry = async (updatedEntry: TimeEntry) => {
+  const handleEditTimeEntry = (entry: TimeEntry) => {
+    setEditingEntry(entry)
+    setIsEditModalOpen(true)
+  }
+
+  const handleUpdateTimeEntry = async (updatedEntry: TimeEntry) => {
     try {
       await updateTimeEntry(updatedEntry)
       if (refreshTimeUsage) {
@@ -78,6 +86,7 @@ export default function TimelineScreen({ isDesktop = false, user }: TimelineScre
       }
     } catch (error) {
       console.error("Failed to update time entry:", error)
+      throw error // Re-throw to let modal handle the error
     }
   }
 
@@ -89,6 +98,7 @@ export default function TimelineScreen({ isDesktop = false, user }: TimelineScre
       }
     } catch (error) {
       console.error("Failed to delete time entry:", error)
+      throw error // Re-throw to let modal handle the error
     }
   }
 
@@ -363,6 +373,19 @@ export default function TimelineScreen({ isDesktop = false, user }: TimelineScre
         }}
         onAdd={handleAddTimeEntry}
         prefilledEntry={prefilledEntry}
+        user={user}
+        onTimeUsageUpdate={refreshTimeUsage}
+      />
+
+      <EditTimeEntryModal
+        isOpen={isEditModalOpen}
+        onClose={() => {
+          setIsEditModalOpen(false)
+          setEditingEntry(null)
+        }}
+        onUpdate={handleUpdateTimeEntry}
+        onDelete={handleDeleteTimeEntry}
+        entry={editingEntry}
         user={user}
         onTimeUsageUpdate={refreshTimeUsage}
       />
