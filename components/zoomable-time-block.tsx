@@ -154,10 +154,9 @@ export default function ZoomableTimeBlock({ entry, onEdit, onDelete, zoomLevel, 
   if (zoomLevel <= 0.5) {
     return (
       <div
-        className="border-l-4 bg-white/95 backdrop-blur-sm rounded-r-lg p-2 shadow-lg hover:shadow-xl transition-all duration-300 group cursor-pointer border border-gray-200/60"
+        className="border-l-4 bg-white/95 backdrop-blur-sm rounded-r-lg p-2 shadow-lg hover:shadow-xl transition-all duration-300 group cursor-pointer border border-gray-200/60 h-full"
         style={{
           borderLeftColor: entry.categoryColor,
-          height: `${slotHeight - 8}px`,
           minHeight: "32px",
         }}
         onClick={() => setIsEditing(true)}
@@ -174,10 +173,10 @@ export default function ZoomableTimeBlock({ entry, onEdit, onDelete, zoomLevel, 
   if (zoomLevel <= 0.8) {
     return (
       <div
-        className="border-l-4 bg-white/95 backdrop-blur-sm rounded-r-2xl p-3 shadow-lg hover:shadow-xl transition-all duration-300 group cursor-pointer border border-gray-200/60"
+        className="border-l-4 bg-white/95 backdrop-blur-sm rounded-r-2xl p-3 shadow-lg hover:shadow-xl transition-all duration-300 group cursor-pointer border border-gray-200/60 h-full"
         style={{
           borderLeftColor: entry.categoryColor,
-          minHeight: `${slotHeight - 8}px`,
+          minHeight: "40px",
         }}
         onClick={() => setIsEditing(true)}
       >
@@ -205,10 +204,10 @@ export default function ZoomableTimeBlock({ entry, onEdit, onDelete, zoomLevel, 
   // Full view for normal and zoomed in
   return (
     <div
-      className="border-l-4 bg-white/95 backdrop-blur-sm rounded-r-3xl p-4 shadow-xl hover:shadow-2xl transition-all duration-300 group cursor-pointer border border-gray-200/60 hover:border-gray-300/60"
+      className="border-l-4 bg-white/95 backdrop-blur-sm rounded-r-3xl p-4 shadow-xl hover:shadow-2xl transition-all duration-300 group cursor-pointer border border-gray-200/60 hover:border-gray-300/60 h-full"
       style={{
         borderLeftColor: entry.categoryColor,
-        minHeight: `${slotHeight - 8}px`,
+        minHeight: "60px",
       }}
     >
       <div className="flex justify-between items-start">

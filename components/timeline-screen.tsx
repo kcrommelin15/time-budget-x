@@ -1,6 +1,8 @@
 "use client"
 
-import { useState, useRef, useEffect } from "react"
+import type React from "react"
+
+import { useState, useRef } from "react"
 import { Calendar, Plus, ChevronDown } from "lucide-react"
 import AddTimeEntryModal from "@/components/add-time-entry-modal"
 import TrackingPreferencesModal from "@/components/tracking-preferences-modal"
@@ -37,7 +39,6 @@ export default function TimelineScreen({ isDesktop = false, user }: TimelineScre
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
   const [isPreferencesOpen, setIsPreferencesOpen] = useState(false)
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false)
-  const [zoomLevel, setZoomLevel] = useState(1) // Keep zoom functionality but hide controls
   const [prefilledEntry, setPrefilledEntry] = useState<{ startTime: string; endTime: string } | null>(null)
 
   const timelineRef = useRef<HTMLDivElement>(null)
@@ -91,141 +92,85 @@ export default function TimelineScreen({ isDesktop = false, user }: TimelineScre
     }
   }
 
-  // Handle zoom with scroll wheel (keep functionality but hide controls)
-  useEffect(() => {
-    const handleWheel = (e: WheelEvent) => {
-      if (e.ctrlKey || e.metaKey) {
-        e.preventDefault()
-        const delta = e.deltaY > 0 ? -0.1 : 0.1
-        setZoomLevel((prev) => Math.max(0.3, Math.min(3, prev + delta)))
-      }
-    }
+  // Timeline configuration
+  const TIMELINE_START_HOUR = 6 // 6 AM
+  const TIMELINE_END_HOUR = 23 // 11 PM
+  const TIMELINE_HOURS = TIMELINE_END_HOUR - TIMELINE_START_HOUR + 1 // 18 hours
+  const HOUR_HEIGHT = 80 // pixels per hour
+  const TIMELINE_HEIGHT = TIMELINE_HOURS * HOUR_HEIGHT
 
-    const timeline = timelineRef.current
-    if (timeline) {
-      timeline.addEventListener("wheel", handleWheel, { passive: false })
-      return () => timeline.removeEventListener("wheel", handleWheel)
-    }
-  }, [])
-
-  // Generate time slots based on zoom level
-  const generateTimeSlots = () => {
-    const slots = []
-    let increment = 60 // minutes
-    let startHour = 6
-    let endHour = 23
-
-    if (zoomLevel <= 0.5) {
-      // Zoomed out - 2 hour increments, 4 AM to 11 PM
-      increment = 120
-      startHour = 4
-      endHour = 23
-    } else if (zoomLevel <= 0.8) {
-      // Medium zoom out - 1 hour increments
-      increment = 60
-    } else if (zoomLevel >= 1.5) {
-      // Zoomed in - 15 minute increments
-      increment = 15
-    } else {
-      // Normal - 30 minute increments
-      increment = 30
-    }
-
-    for (let hour = startHour; hour <= endHour; hour++) {
-      for (let minute = 0; minute < 60; minute += increment) {
-        if (hour === endHour && minute > 0) break
-        const timeString = `${hour.toString().padStart(2, "0")}:${minute.toString().padStart(2, "0")}`
-        slots.push(timeString)
-      }
-    }
-    return slots
-  }
-
-  const timeSlots = generateTimeSlots()
-
-  // Calculate slot height based on zoom
-  const getSlotHeight = () => {
-    if (zoomLevel <= 0.5) return 40 // Very compact
-    if (zoomLevel <= 0.8) return 60 // Compact
-    if (zoomLevel >= 1.5) return 120 // Expanded
-    return 80 // Normal
-  }
-
-  const slotHeight = getSlotHeight()
-
-  // Convert time string to minutes since midnight
+  // Convert time string to minutes since timeline start
   const timeToMinutes = (timeString: string) => {
     const [hour, minute] = timeString.split(":").map(Number)
-    return hour * 60 + minute
+    return (hour - TIMELINE_START_HOUR) * 60 + minute
   }
 
-  // Convert minutes since midnight to time string
-  const minutesToTime = (minutes: number) => {
-    const hour = Math.floor(minutes / 60)
-    const minute = minutes % 60
-    return `${hour.toString().padStart(2, "0")}:${minute.toString().padStart(2, "0")}`
+  // Convert minutes to pixels from timeline top
+  const minutesToPixels = (minutes: number) => {
+    return (minutes / 60) * HOUR_HEIGHT
   }
 
-  // Calculate which time slots an entry spans
-  const getEntrySpan = (entry: TimeEntry) => {
+  // Get entry position and height
+  const getEntryStyle = (entry: TimeEntry) => {
     const startMinutes = timeToMinutes(entry.startTime)
     const endMinutes = timeToMinutes(entry.endTime)
+    const durationMinutes = endMinutes - startMinutes
 
-    // Get the increment for current zoom level
-    let increment = 60
-    if (zoomLevel <= 0.5) increment = 120
-    else if (zoomLevel <= 0.8) increment = 60
-    else if (zoomLevel >= 1.5) increment = 15
-    else increment = 30
+    const top = minutesToPixels(startMinutes)
+    const height = minutesToPixels(durationMinutes)
 
-    const spannedSlots = []
-    for (const slot of timeSlots) {
-      const slotMinutes = timeToMinutes(slot)
-      const nextSlotMinutes = slotMinutes + increment
-
-      // Include slot if entry overlaps with this time slot
-      if (startMinutes < nextSlotMinutes && endMinutes > slotMinutes) {
-        spannedSlots.push(slot)
-      }
+    return {
+      position: "absolute" as const,
+      top: `${top}px`,
+      height: `${Math.max(height, 24)}px`, // Minimum height for very short events
+      left: "0px",
+      right: "0px",
+      zIndex: 10,
     }
-    return spannedSlots
   }
 
-  // Create a map of which slots are occupied by entries
-  const todaysEntries = timeEntries.filter((entry) => entry.date === selectedDate.toISOString().split("T")[0])
-  const occupiedSlots = new Map<string, TimeEntry>()
-  const entrySpans = new Map<string, string[]>()
+  // Generate hour markers
+  const generateHourMarkers = () => {
+    const markers = []
+    for (let hour = TIMELINE_START_HOUR; hour <= TIMELINE_END_HOUR; hour++) {
+      const displayHour = hour === 0 ? "12 AM" : hour <= 12 ? `${hour} AM` : `${hour - 12} PM`
+      markers.push({
+        hour,
+        displayHour,
+        position: (hour - TIMELINE_START_HOUR) * HOUR_HEIGHT,
+      })
+    }
+    return markers
+  }
 
-  todaysEntries.forEach((entry) => {
-    const spannedSlots = getEntrySpan(entry)
-    entrySpans.set(entry.id, spannedSlots)
+  const hourMarkers = generateHourMarkers()
 
-    spannedSlots.forEach((slot) => {
-      occupiedSlots.set(slot, entry)
-    })
-  })
+  // Handle timeline click to add entry
+  const handleTimelineClick = (e: React.MouseEvent) => {
+    const rect = e.currentTarget.getBoundingClientRect()
+    const clickY = e.clientY - rect.top
+    const clickMinutes = (clickY / HOUR_HEIGHT) * 60
+    const clickHour = Math.floor(clickMinutes / 60) + TIMELINE_START_HOUR
+    const clickMinute = Math.round((clickMinutes % 60) / 15) * 15 // Round to nearest 15 minutes
 
-  // Handle time slot click
-  const handleTimeSlotClick = (time: string) => {
-    const [hour, minute] = time.split(":").map(Number)
-    const startTime = time
-
-    // Add 1 hour for end time
-    const endHour = hour + 1
-    const endTime = `${endHour.toString().padStart(2, "0")}:${minute.toString().padStart(2, "0")}`
+    const startTime = `${clickHour.toString().padStart(2, "0")}:${clickMinute.toString().padStart(2, "0")}`
+    const endHour = clickMinute >= 45 ? clickHour + 1 : clickHour
+    const endMinute = clickMinute >= 45 ? (clickMinute + 15) % 60 : clickMinute + 15
+    const endTime = `${endHour.toString().padStart(2, "0")}:${endMinute.toString().padStart(2, "0")}`
 
     setPrefilledEntry({ startTime, endTime })
     setIsAddModalOpen(true)
   }
 
-  const isToday = selectedDate.toDateString() === new Date().toDateString()
+  // Get today's entries
+  const todaysEntries = timeEntries.filter((entry) => entry.date === selectedDate.toISOString().split("T")[0])
 
   // Calculate timeline container height
   const headerHeight = isDesktop ? 120 : 140
-  const trackingWidgetHeight = isDesktop ? 200 : 240 // Height of the tracking widget
-  const navigationHeight = isDesktop ? 0 : 80 // Mobile navigation bar height
+  const trackingWidgetHeight = isDesktop ? 200 : 240
+  const navigationHeight = isDesktop ? 0 : 80
   const totalFooterHeight = trackingWidgetHeight + navigationHeight
-  const timelineHeight = `calc(100vh - ${headerHeight + totalFooterHeight}px)`
+  const timelineContainerHeight = `calc(100vh - ${headerHeight + totalFooterHeight}px)`
 
   // Show loading state only if we have no data and are loading
   if (timeEntriesLoading && timeEntries.length === 0) {
@@ -272,58 +217,133 @@ export default function TimelineScreen({ isDesktop = false, user }: TimelineScre
       </div>
 
       {/* Scrollable Timeline */}
-      <div ref={timelineRef} className="overflow-y-auto overflow-x-hidden" style={{ height: timelineHeight }}>
-        <div className="p-6 pt-2 space-y-1" style={{ paddingBottom: isDesktop ? "24px" : "32px" }}>
+      <div ref={timelineRef} className="overflow-y-auto overflow-x-hidden" style={{ height: timelineContainerHeight }}>
+        <div className="p-6 pt-2">
           {timeEntriesError && (
             <div className="fixed top-16 left-1/2 transform -translate-x-1/2 bg-red-100 border border-red-400 text-red-700 px-4 py-2 rounded z-50">
               {timeEntriesError}
             </div>
           )}
-          {timeSlots.map((time, index) => {
-            const occupyingEntry = occupiedSlots.get(time)
-            const isFirstSlotOfEntry = occupyingEntry && entrySpans.get(occupyingEntry.id)?.[0] === time
-            const entrySlotCount = occupyingEntry ? entrySpans.get(occupyingEntry.id)?.length || 1 : 1
 
-            return (
-              <div key={time} className="flex items-start" style={{ minHeight: `${slotHeight}px` }}>
+          {/* Timeline Container */}
+          <div className="flex">
+            {/* Time Labels */}
+            <div className="w-16 flex-shrink-0">
+              {hourMarkers.map((marker) => (
                 <div
-                  className={`text-gray-500 font-mono font-medium pt-2 flex-shrink-0 ${
-                    zoomLevel <= 0.5 ? "w-12 text-xs" : zoomLevel <= 0.8 ? "w-14 text-sm" : "w-16 text-sm"
-                  }`}
+                  key={marker.hour}
+                  className="relative text-sm font-medium text-gray-500"
+                  style={{ height: `${HOUR_HEIGHT}px` }}
                 >
-                  {zoomLevel <= 0.5 ? time.split(":")[0] : time}
+                  <div className="absolute -top-2">{marker.displayHour}</div>
                 </div>
-                <div className="flex-1 ml-4">
-                  {occupyingEntry && isFirstSlotOfEntry ? (
-                    // Render the entry block spanning multiple slots
+              ))}
+            </div>
+
+            {/* Timeline Grid and Events */}
+            <div className="flex-1 ml-4 relative">
+              {/* Background Grid */}
+              <div
+                className="relative cursor-pointer"
+                style={{ height: `${TIMELINE_HEIGHT}px` }}
+                onClick={handleTimelineClick}
+              >
+                {/* Hour Grid Lines */}
+                {hourMarkers.map((marker) => (
+                  <div
+                    key={marker.hour}
+                    className="absolute w-full border-t border-gray-200"
+                    style={{ top: `${marker.position}px` }}
+                  />
+                ))}
+
+                {/* 30-minute Grid Lines */}
+                {hourMarkers.slice(0, -1).map((marker) => (
+                  <div
+                    key={`${marker.hour}-30`}
+                    className="absolute w-full border-t border-gray-100"
+                    style={{ top: `${marker.position + HOUR_HEIGHT / 2}px` }}
+                  />
+                ))}
+
+                {/* Current Time Indicator */}
+                {selectedDate.toDateString() === new Date().toDateString() &&
+                  (() => {
+                    const now = new Date()
+                    const currentHour = now.getHours()
+                    const currentMinute = now.getMinutes()
+
+                    if (currentHour >= TIMELINE_START_HOUR && currentHour <= TIMELINE_END_HOUR) {
+                      const currentMinutes = (currentHour - TIMELINE_START_HOUR) * 60 + currentMinute
+                      const currentPosition = minutesToPixels(currentMinutes)
+
+                      return (
+                        <div className="absolute w-full z-20 flex items-center" style={{ top: `${currentPosition}px` }}>
+                          <div className="w-3 h-3 bg-red-500 rounded-full border-2 border-white shadow-lg -ml-1.5"></div>
+                          <div className="flex-1 h-0.5 bg-red-500"></div>
+                          <div className="bg-red-500 text-white text-xs px-2 py-1 rounded-lg font-medium ml-2">
+                            {now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                          </div>
+                        </div>
+                      )
+                    }
+                    return null
+                  })()}
+
+                {/* Time Entries */}
+                {todaysEntries.map((entry) => (
+                  <div key={entry.id} style={getEntryStyle(entry)} className="px-2">
                     <ZoomableTimeBlock
-                      entry={occupyingEntry}
+                      entry={entry}
                       onEdit={handleEditTimeEntry}
                       onDelete={handleDeleteTimeEntry}
-                      zoomLevel={zoomLevel}
-                      slotHeight={slotHeight * entrySlotCount + (entrySlotCount - 1) * 4} // Account for spacing
+                      zoomLevel={1}
+                      slotHeight={0} // Not used in absolute positioning
                     />
-                  ) : occupyingEntry ? (
-                    // This slot is occupied but not the first slot - render nothing (covered by the spanning block above)
-                    <div style={{ height: `${slotHeight - 8}px` }} />
-                  ) : (
-                    // Empty slot - allow clicking to add entry
-                    <div
-                      className="border-l-2 border-gray-200 hover:border-gray-400 cursor-pointer transition-all duration-200 rounded-r-lg hover:bg-gray-50 flex items-center pl-4"
-                      style={{ height: `${slotHeight - 8}px` }}
-                      onClick={() => handleTimeSlotClick(time)}
-                    >
-                      {zoomLevel >= 0.8 && (
-                        <span className="text-gray-400 text-sm opacity-0 hover:opacity-100 transition-opacity">
-                          + Add entry
-                        </span>
-                      )}
+                  </div>
+                ))}
+
+                {/* Click Areas for Adding Events */}
+                <div className="absolute inset-0 pointer-events-none">
+                  {hourMarkers.slice(0, -1).map((marker) => (
+                    <div key={`click-${marker.hour}`}>
+                      {/* Top half hour */}
+                      <div
+                        className="absolute w-full pointer-events-auto hover:bg-blue-50/30 transition-colors"
+                        style={{
+                          top: `${marker.position}px`,
+                          height: `${HOUR_HEIGHT / 2}px`,
+                        }}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          const startTime = `${marker.hour.toString().padStart(2, "0")}:00`
+                          const endTime = `${marker.hour.toString().padStart(2, "0")}:30`
+                          setPrefilledEntry({ startTime, endTime })
+                          setIsAddModalOpen(true)
+                        }}
+                      />
+                      {/* Bottom half hour */}
+                      <div
+                        className="absolute w-full pointer-events-auto hover:bg-blue-50/30 transition-colors"
+                        style={{
+                          top: `${marker.position + HOUR_HEIGHT / 2}px`,
+                          height: `${HOUR_HEIGHT / 2}px`,
+                        }}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          const startTime = `${marker.hour.toString().padStart(2, "0")}:30`
+                          const nextHour = marker.hour + 1
+                          const endTime = `${nextHour.toString().padStart(2, "0")}:00`
+                          setPrefilledEntry({ startTime, endTime })
+                          setIsAddModalOpen(true)
+                        }}
+                      />
                     </div>
-                  )}
+                  ))}
                 </div>
               </div>
-            )
-          })}
+            </div>
+          </div>
         </div>
       </div>
 
