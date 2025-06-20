@@ -53,9 +53,20 @@ export default function EditTimeEntryModal({
     },
   })
 
-  // Reset form when modal opens/closes
+  // Debug: Log when modal opens and what data we have
+  useEffect(() => {
+    if (isOpen) {
+      console.log("=== EDIT MODAL OPENED ===")
+      console.log("Entry data:", entry)
+      console.log("Categories available:", categories)
+      console.log("Categories length:", categories.length)
+    }
+  }, [isOpen, entry, categories])
+
+  // Reset everything when modal closes
   useEffect(() => {
     if (!isOpen) {
+      console.log("Modal closed, resetting state")
       reset()
       setSelectedCategory("")
       setSelectedSubcategory("")
@@ -65,66 +76,94 @@ export default function EditTimeEntryModal({
     }
   }, [isOpen, reset])
 
-  // Update form when entry changes and categories are loaded
+  // Main effect: Set up form when modal opens with entry data
   useEffect(() => {
-    if (entry && isOpen && categories.length > 0) {
-      console.log("Setting up form with entry:", entry)
-      console.log("Available categories:", categories)
+    if (isOpen && entry && categories.length > 0) {
+      console.log("=== SETTING UP FORM ===")
+      console.log("Entry to edit:", {
+        id: entry.id,
+        categoryId: entry.categoryId,
+        categoryName: entry.categoryName,
+        subcategory: entry.subcategory,
+        startTime: entry.startTime,
+        endTime: entry.endTime,
+        description: entry.description,
+      })
 
-      // Set form values
+      // Set basic form fields
       setValue("startTime", entry.startTime)
       setValue("endTime", entry.endTime)
       setValue("description", entry.description || "")
+      console.log("Set form values:", {
+        startTime: entry.startTime,
+        endTime: entry.endTime,
+        description: entry.description || "",
+      })
 
-      // Find category - try multiple approaches
+      // Find and set category
       let foundCategory = null
 
-      // First try by ID
+      // Method 1: Find by categoryId
       if (entry.categoryId) {
         foundCategory = categories.find((c) => c.id === entry.categoryId)
-        console.log("Found category by ID:", foundCategory)
+        console.log("Search by categoryId:", entry.categoryId, "Found:", foundCategory)
       }
 
-      // If not found by ID, try by name
+      // Method 2: Find by categoryName if ID search failed
       if (!foundCategory && entry.categoryName) {
         foundCategory = categories.find((c) => c.name === entry.categoryName)
-        console.log("Found category by name:", foundCategory)
+        console.log("Search by categoryName:", entry.categoryName, "Found:", foundCategory)
+      }
+
+      // Method 3: Find by exact match of both
+      if (!foundCategory) {
+        foundCategory = categories.find((c) => c.id === entry.categoryId || c.name === entry.categoryName)
+        console.log("Search by either ID or name, Found:", foundCategory)
       }
 
       if (foundCategory) {
-        console.log("Setting category:", foundCategory.id)
+        console.log("✅ Setting category:", foundCategory.id, foundCategory.name)
         setSelectedCategory(foundCategory.id)
 
-        // Set subcategory if it exists and category has subcategories
+        // Handle subcategory
         if (entry.subcategory && foundCategory.subcategories?.length > 0) {
           const foundSubcategory = foundCategory.subcategories.find((sub) => sub.name === entry.subcategory)
+          console.log("Looking for subcategory:", entry.subcategory, "in:", foundCategory.subcategories)
+          console.log("Found subcategory:", foundSubcategory)
+
           if (foundSubcategory) {
-            console.log("Setting subcategory:", entry.subcategory)
+            console.log("✅ Setting subcategory:", entry.subcategory)
             setSelectedSubcategory(entry.subcategory)
+          } else {
+            console.log("❌ Subcategory not found")
           }
+        } else {
+          console.log("No subcategory to set or category has no subcategories")
         }
       } else {
-        console.warn("Could not find category for entry:", {
-          categoryId: entry.categoryId,
-          categoryName: entry.categoryName,
-          availableCategories: categories.map((c) => ({ id: c.id, name: c.name })),
-        })
+        console.log("❌ CATEGORY NOT FOUND!")
+        console.log(
+          "Available categories:",
+          categories.map((c) => ({ id: c.id, name: c.name })),
+        )
+        console.log("Looking for:", { categoryId: entry.categoryId, categoryName: entry.categoryName })
       }
     }
-  }, [entry, isOpen, categories, setValue])
+  }, [isOpen, entry, categories, setValue])
 
-  // Update subcategories when category changes
+  // Update subcategories when selected category changes
   useEffect(() => {
     if (selectedCategory && categories.length > 0) {
       const cat = categories.find((c) => c.id === selectedCategory)
-      console.log("Selected category changed:", cat)
+      console.log("Category selection changed to:", cat)
       setSelectedCat(cat)
       setSubcategories(cat?.subcategories || [])
 
-      // Clear subcategory if the new category doesn't have the current subcategory
+      // Clear subcategory if it doesn't exist in new category
       if (selectedSubcategory && cat?.subcategories) {
         const hasSubcategory = cat.subcategories.some((sub) => sub.name === selectedSubcategory)
         if (!hasSubcategory) {
+          console.log("Clearing subcategory - not found in new category")
           setSelectedSubcategory("")
         }
       }
@@ -137,6 +176,10 @@ export default function EditTimeEntryModal({
   if (!isOpen || !entry) return null
 
   const onSubmit = async (data: any) => {
+    console.log("Form submitted with:", data)
+    console.log("Selected category:", selectedCategory)
+    console.log("Selected subcategory:", selectedSubcategory)
+
     const category = categories.find((c) => c.id === selectedCategory)
     if (!category) {
       setValidationError("Please select a valid category")
@@ -155,7 +198,7 @@ export default function EditTimeEntryModal({
     setValidationError(null)
 
     try {
-      await onUpdate({
+      const updatedEntry = {
         ...entry,
         categoryId: selectedCategory,
         categoryName: category.name,
@@ -164,8 +207,10 @@ export default function EditTimeEntryModal({
         endTime: data.endTime,
         description: data.description || "",
         subcategory: selectedSubcategory || undefined,
-      })
+      }
 
+      console.log("Updating entry with:", updatedEntry)
+      await onUpdate(updatedEntry)
       onClose()
     } catch (error) {
       console.error("Error updating time entry:", error)
@@ -203,6 +248,17 @@ export default function EditTimeEntryModal({
         </div>
 
         <form onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-6">
+          {/* Debug info - remove this later */}
+          <div className="text-xs text-gray-500 bg-gray-50 p-2 rounded">
+            <div>Entry ID: {entry.id}</div>
+            <div>Category ID: {entry.categoryId}</div>
+            <div>Category Name: {entry.categoryName}</div>
+            <div>Subcategory: {entry.subcategory || "None"}</div>
+            <div>Selected Category: {selectedCategory || "None"}</div>
+            <div>Selected Subcategory: {selectedSubcategory || "None"}</div>
+            <div>Available Categories: {categories.length}</div>
+          </div>
+
           <div>
             <Label className="text-base font-medium">Category</Label>
             <Select value={selectedCategory} onValueChange={setSelectedCategory}>
