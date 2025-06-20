@@ -59,10 +59,22 @@ export default function EditTimeEntryModal({
       setValue("startTime", entry.startTime)
       setValue("endTime", entry.endTime)
       setValue("description", entry.description || "")
-      setSelectedCategory(entry.categoryId)
-      setSelectedSubcategory(entry.subcategory || "")
+
+      // Set category - try to find by ID first, then by name as fallback
+      const categoryById = categories.find((c) => c.id === entry.categoryId)
+      const categoryByName = categories.find((c) => c.name === entry.categoryName)
+      const foundCategory = categoryById || categoryByName
+
+      if (foundCategory) {
+        setSelectedCategory(foundCategory.id)
+      }
+
+      // Set subcategory if it exists
+      if (entry.subcategory) {
+        setSelectedSubcategory(entry.subcategory)
+      }
     }
-  }, [entry, isOpen, setValue])
+  }, [entry, isOpen, setValue, categories])
 
   useEffect(() => {
     if (selectedCategory) {
@@ -243,19 +255,17 @@ export default function EditTimeEntryModal({
           </div>
 
           <div className="flex gap-3 pt-4">
-            <div className="flex gap-2">
-              <Button type="button" variant="outline" onClick={handleClose} className="rounded-2xl h-12 px-4">
-                Cancel
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleDelete}
-                className="rounded-2xl h-12 px-4 text-red-600 hover:bg-red-50 hover:text-red-700"
-              >
-                <Trash2 className="w-4 h-4" />
-              </Button>
-            </div>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleDelete}
+              className="rounded-2xl h-12 px-4 text-red-600 hover:bg-red-50 hover:text-red-700"
+            >
+              <Trash2 className="w-4 h-4" />
+            </Button>
+            <Button type="button" variant="outline" onClick={handleClose} className="rounded-2xl h-12 px-6">
+              Cancel
+            </Button>
             <Button
               type="submit"
               className="flex-1 rounded-2xl h-12 bg-gradient-to-r from-blue-500 to-purple-600"

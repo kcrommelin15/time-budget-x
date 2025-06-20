@@ -71,7 +71,7 @@ export default function ZoomableTimeBlock({ entry, onEdit, onDelete, zoomLevel, 
           maxHeight: "24px",
         }}
         onClick={handleCardClick}
-        title={`${entry.categoryName} (${entry.startTime} - ${entry.endTime}, ${getDuration()})`}
+        title={`${entry.categoryName}${entry.subcategory ? ` - ${entry.subcategory}` : ""} (${entry.startTime} - ${entry.endTime}, ${getDuration()})`}
       >
         <div className="flex items-center justify-between w-full">
           <span className="font-medium text-xs text-gray-900 truncate flex-1">{entry.categoryName}</span>
@@ -95,6 +95,7 @@ export default function ZoomableTimeBlock({ entry, onEdit, onDelete, zoomLevel, 
         <div className="flex justify-between items-center h-full">
           <div className="flex-1 min-w-0">
             <h4 className="font-semibold text-sm text-gray-900 truncate">{entry.categoryName}</h4>
+            {entry.subcategory && <p className="text-xs text-gray-500 truncate">{entry.subcategory}</p>}
             <p className="text-xs text-gray-600">{getDuration()}</p>
           </div>
           <Button
@@ -146,6 +147,7 @@ export default function ZoomableTimeBlock({ entry, onEdit, onDelete, zoomLevel, 
         <div className="flex justify-between items-start h-full">
           <div className="flex-1 min-w-0">
             <h4 className="font-semibold text-sm text-gray-900 truncate">{entry.categoryName}</h4>
+            {entry.subcategory && <p className="text-xs text-gray-500 truncate mb-1">{entry.subcategory}</p>}
             <p className="text-xs text-gray-600 mb-1">
               {entry.startTime} - {entry.endTime} | {getDuration()}
             </p>
@@ -212,12 +214,8 @@ export default function ZoomableTimeBlock({ entry, onEdit, onDelete, zoomLevel, 
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-2">
             <h4 className="font-semibold text-gray-900 truncate">{entry.categoryName}</h4>
-            <div className="flex items-center gap-1">
-              <span className="text-xs text-green-600 font-medium">
-                {entry.status === "pending" ? "Pending" : "Confirmed"}
-              </span>
-            </div>
           </div>
+          {entry.subcategory && <p className="text-sm text-gray-500 truncate mb-1">{entry.subcategory}</p>}
           <p className="text-sm text-gray-600 mb-2">
             {entry.startTime} - {entry.endTime} | {getDuration()}
           </p>
