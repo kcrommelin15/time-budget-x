@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Edit, Check, X, Clock, MoreHorizontal, Trash2 } from "lucide-react"
+import { Edit, Check, X, Clock, MoreHorizontal, Trash2 } from 'lucide-react'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -29,15 +29,19 @@ export default function ZoomableTimeBlock({ entry, onEdit, onDelete, zoomLevel, 
     description: entry.description,
   })
 
-  // Update the getDuration function to use formatTime
-  const getDuration = () => {
+  // Calculate duration in minutes
+  const getDurationMinutes = () => {
     const [startHour, startMin] = entry.startTime.split(":").map(Number)
     const [endHour, endMin] = entry.endTime.split(":").map(Number)
     const startMinutes = startHour * 60 + startMin
     const endMinutes = endHour * 60 + endMin
-    const durationMinutes = endMinutes - startMinutes
-    const durationHours = durationMinutes / 60
+    return endMinutes - startMinutes
+  }
 
+  // Update the getDuration function to use formatTime
+  const getDuration = () => {
+    const durationMinutes = getDurationMinutes()
+    const durationHours = durationMinutes / 60
     return formatTime(durationHours, true)
   }
 
@@ -72,15 +76,11 @@ export default function ZoomableTimeBlock({ entry, onEdit, onDelete, zoomLevel, 
     setShowMenu(false)
   }
 
-  // Determine what to show based on zoom level
-  const showFullDetails = zoomLevel >= 1
-  const showDescription = zoomLevel >= 1.2 && entry.description
-  const showTime = zoomLevel >= 0.8
-  const showStatus = zoomLevel >= 1.5
+  const durationMinutes = getDurationMinutes()
 
   if (isEditing) {
     return (
-      <div className="bg-white rounded-3xl p-4 shadow-xl border-2 border-blue-200 border border-gray-200/60">
+      <div className="bg-white rounded-3xl p-4 shadow-xl border-2 border-blue-200 border border-gray-200/60 absolute inset-0 z-50">
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -150,40 +150,41 @@ export default function ZoomableTimeBlock({ entry, onEdit, onDelete, zoomLevel, 
     )
   }
 
-  // Compact view for zoomed out
-  if (zoomLevel <= 0.5) {
+  // Very short events (< 15 minutes) - minimal display
+  if (durationMinutes < 15) {
     return (
       <div
-        className="border-l-4 bg-white/95 backdrop-blur-sm rounded-r-lg p-2 shadow-lg hover:shadow-xl transition-all duration-300 group cursor-pointer border border-gray-200/60 h-full"
+        className="border-l-4 bg-white/95 backdrop-blur-sm rounded-r-lg px-2 py-1 shadow-lg hover:shadow-xl transition-all duration-300 group cursor-pointer border border-gray-200/60 h-full flex items-center"
+        style={{
+          borderLeftColor: entry.categoryColor,
+          minHeight: "20px",
+        }}
+        onClick={() => setIsEditing(true)}
+        title={`${entry.categoryName} (${entry.startTime} - ${entry.endTime}, ${getDuration()})`}
+      >
+        <div className="flex items-center justify-between w-full">
+          <span className="font-medium text-xs text-gray-900 truncate flex-1">{entry.categoryName}</span>
+          <span className="text-xs text-gray-500 ml-1 flex-shrink-0">{getDuration()}</span>
+        </div>
+      </div>
+    )
+  }
+
+  // Short events (15-30 minutes) - compact display
+  if (durationMinutes < 30) {
+    return (
+      <div
+        className="border-l-4 bg-white/95 backdrop-blur-sm rounded-r-2xl p-2 shadow-lg hover:shadow-xl transition-all duration-300 group cursor-pointer border border-gray-200/60 h-full"
         style={{
           borderLeftColor: entry.categoryColor,
           minHeight: "32px",
         }}
         onClick={() => setIsEditing(true)}
       >
-        <div className="flex items-center justify-between h-full">
-          <span className="font-medium text-sm text-gray-900 truncate">{entry.categoryName}</span>
-          <span className="text-xs text-gray-500">{getDuration()}</span>
-        </div>
-      </div>
-    )
-  }
-
-  // Medium view
-  if (zoomLevel <= 0.8) {
-    return (
-      <div
-        className="border-l-4 bg-white/95 backdrop-blur-sm rounded-r-2xl p-3 shadow-lg hover:shadow-xl transition-all duration-300 group cursor-pointer border border-gray-200/60 h-full"
-        style={{
-          borderLeftColor: entry.categoryColor,
-          minHeight: "40px",
-        }}
-        onClick={() => setIsEditing(true)}
-      >
-        <div className="flex justify-between items-start">
+        <div className="flex justify-between items-center h-full">
           <div className="flex-1 min-w-0">
-            <h4 className="font-semibold text-gray-900 truncate">{entry.categoryName}</h4>
-            <p className="text-sm text-gray-600">{getDuration()}</p>
+            <h4 className="font-semibold text-sm text-gray-900 truncate">{entry.categoryName}</h4>
+            <p className="text-xs text-gray-600">{getDuration()}</p>
           </div>
           <Button
             variant="ghost"
@@ -192,43 +193,117 @@ export default function ZoomableTimeBlock({ entry, onEdit, onDelete, zoomLevel, 
               e.stopPropagation()
               setShowMenu(!showMenu)
             }}
-            className="rounded-xl opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8 p-0"
+            className="rounded-xl opacity-0 group-hover:opacity-100 transition-opacity h-6 w-6 p-0 ml-1"
           >
             <MoreHorizontal className="w-3 h-3" />
           </Button>
+        </div>
+
+        {showMenu && (
+          <div className="absolute right-0 top-full mt-1 bg-white rounded-xl shadow-xl border border-gray-200 py-1 z-50 min-w-[100px]">
+            <button
+              onClick={handleDelete}
+              className="w-full px-3 py-2 text-left text-sm hover:bg-red-50 text-red-600 flex items-center gap-2"
+            >
+              <Trash2 className="w-3 h-3" />
+              Delete
+            </button>
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  // Medium events (30-60 minutes) - standard display
+  if (durationMinutes < 60) {
+    return (
+      <div
+        className="border-l-4 bg-white/95 backdrop-blur-sm rounded-r-2xl p-3 shadow-lg hover:shadow-xl transition-all duration-300 group cursor-pointer border border-gray-200/60 h-full"
+        style={{
+          borderLeftColor: entry.categoryColor,
+          minHeight: "48px",
+        }}
+        onClick={() => setIsEditing(true)}
+      >
+        <div className="flex justify-between items-start h-full">
+          <div className="flex-1 min-w-0">
+            <h4 className="font-semibold text-sm text-gray-900 truncate">{entry.categoryName}</h4>
+            <p className="text-xs text-gray-600 mb-1">
+              {entry.startTime} - {entry.endTime} | {getDuration()}
+            </p>
+            {entry.description && (
+              <p className="text-xs text-gray-500 truncate">{entry.description}</p>
+            )}
+          </div>
+          <div className="flex items-center gap-1 ml-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation()
+                setIsEditing(true)
+              }}
+              className="rounded-xl opacity-0 group-hover:opacity-100 transition-opacity h-6 w-6 p-0"
+            >
+              <Edit className="w-3 h-3" />
+            </Button>
+            <div className="relative">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setShowMenu(!showMenu)
+                }}
+                className="rounded-xl opacity-0 group-hover:opacity-100 transition-opacity h-6 w-6 p-0"
+              >
+                <MoreHorizontal className="w-3 h-3" />
+              </Button>
+
+              {showMenu && (
+                <div className="absolute right-0 top-full mt-1 bg-white rounded-xl shadow-xl border border-gray-200 py-1 z-50 min-w-[100px]">
+                  <button
+                    onClick={handleDelete}
+                    className="w-full px-3 py-2 text-left text-sm hover:bg-red-50 text-red-600 flex items-center gap-2"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                    Delete
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </div>
     )
   }
 
-  // Full view for normal and zoomed in
+  // Long events (60+ minutes) - full display
   return (
     <div
       className="border-l-4 bg-white/95 backdrop-blur-sm rounded-r-3xl p-4 shadow-xl hover:shadow-2xl transition-all duration-300 group cursor-pointer border border-gray-200/60 hover:border-gray-300/60 h-full"
       style={{
         borderLeftColor: entry.categoryColor,
-        minHeight: "60px",
+        minHeight: "80px",
       }}
     >
-      <div className="flex justify-between items-start">
+      <div className="flex justify-between items-start h-full">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-2">
             <h4 className="font-semibold text-gray-900 truncate">{entry.categoryName}</h4>
-            {showStatus && (
-              <div className="flex items-center gap-1">
-                <Clock className="w-3 h-3 text-green-500" />
-                <span className="text-xs text-green-600 font-medium">
-                  {entry.status === "pending" ? "Pending" : "Confirmed"}
-                </span>
-              </div>
-            )}
+            <div className="flex items-center gap-1">
+              <Clock className="w-3 h-3 text-green-500" />
+              <span className="text-xs text-green-600 font-medium">
+                {entry.status === "pending" ? "Pending" : "Confirmed"}
+              </span>
+            </div>
           </div>
-          {showTime && (
-            <p className="text-sm text-gray-600 mb-2">
-              {entry.startTime} - {entry.endTime} | {getDuration()}
-            </p>
+          <p className="text-sm text-gray-600 mb-2">
+            {entry.startTime} - {entry.endTime} | {getDuration()}
+          </p>
+          {entry.description && (
+            <p className="text-sm text-gray-500 line-clamp-2 leading-relaxed">{entry.description}</p>
           )}
-          {showDescription && <p className="text-sm text-gray-500 line-clamp-2 leading-relaxed">{entry.description}</p>}
         </div>
 
         <div className="flex items-center gap-1 ml-3">

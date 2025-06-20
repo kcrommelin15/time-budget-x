@@ -3,7 +3,7 @@
 import type React from "react"
 
 import { useState, useRef } from "react"
-import { Calendar, Plus, ChevronDown } from "lucide-react"
+import { Calendar, Plus, ChevronDown } from 'lucide-react'
 import AddTimeEntryModal from "@/components/add-time-entry-modal"
 import TrackingPreferencesModal from "@/components/tracking-preferences-modal"
 import SimpleDatePickerModal from "@/components/simple-date-picker-modal"
@@ -119,10 +119,16 @@ export default function TimelineScreen({ isDesktop = false, user }: TimelineScre
     const top = minutesToPixels(startMinutes)
     const height = minutesToPixels(durationMinutes)
 
+    // Set minimum height based on duration for very short events
+    let minHeight = 20
+    if (durationMinutes >= 15) minHeight = 32
+    if (durationMinutes >= 30) minHeight = 48
+    if (durationMinutes >= 60) minHeight = 80
+
     return {
       position: "absolute" as const,
       top: `${top}px`,
-      height: `${Math.max(height, 24)}px`, // Minimum height for very short events
+      height: `${Math.max(height, minHeight)}px`,
       left: "0px",
       right: "0px",
       zIndex: 10,
@@ -257,13 +263,22 @@ export default function TimelineScreen({ isDesktop = false, user }: TimelineScre
                   />
                 ))}
 
-                {/* 30-minute Grid Lines */}
+                {/* 15-minute Grid Lines for better precision */}
                 {hourMarkers.slice(0, -1).map((marker) => (
-                  <div
-                    key={`${marker.hour}-30`}
-                    className="absolute w-full border-t border-gray-100"
-                    style={{ top: `${marker.position + HOUR_HEIGHT / 2}px` }}
-                  />
+                  <div key={`${marker.hour}-quarters`}>
+                    <div
+                      className="absolute w-full border-t border-gray-100"
+                      style={{ top: `${marker.position + HOUR_HEIGHT / 4}px` }}
+                    />
+                    <div
+                      className="absolute w-full border-t border-gray-150"
+                      style={{ top: `${marker.position + HOUR_HEIGHT / 2}px` }}
+                    />
+                    <div
+                      className="absolute w-full border-t border-gray-100"
+                      style={{ top: `${marker.position + (3 * HOUR_HEIGHT) / 4}px` }}
+                    />
+                  </div>
                 ))}
 
                 {/* Current Time Indicator */}
@@ -307,37 +322,27 @@ export default function TimelineScreen({ isDesktop = false, user }: TimelineScre
                 <div className="absolute inset-0 pointer-events-none">
                   {hourMarkers.slice(0, -1).map((marker) => (
                     <div key={`click-${marker.hour}`}>
-                      {/* Top half hour */}
-                      <div
-                        className="absolute w-full pointer-events-auto hover:bg-blue-50/30 transition-colors"
-                        style={{
-                          top: `${marker.position}px`,
-                          height: `${HOUR_HEIGHT / 2}px`,
-                        }}
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          const startTime = `${marker.hour.toString().padStart(2, "0")}:00`
-                          const endTime = `${marker.hour.toString().padStart(2, "0")}:30`
-                          setPrefilledEntry({ startTime, endTime })
-                          setIsAddModalOpen(true)
-                        }}
-                      />
-                      {/* Bottom half hour */}
-                      <div
-                        className="absolute w-full pointer-events-auto hover:bg-blue-50/30 transition-colors"
-                        style={{
-                          top: `${marker.position + HOUR_HEIGHT / 2}px`,
-                          height: `${HOUR_HEIGHT / 2}px`,
-                        }}
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          const startTime = `${marker.hour.toString().padStart(2, "0")}:30`
-                          const nextHour = marker.hour + 1
-                          const endTime = `${nextHour.toString().padStart(2, "0")}:00`
-                          setPrefilledEntry({ startTime, endTime })
-                          setIsAddModalOpen(true)
-                        }}
-                      />
+                      {/* Four 15-minute segments per hour */}
+                      {[0, 1, 2, 3].map((quarter) => (
+                        <div
+                          key={`${marker.hour}-${quarter}`}
+                          className="absolute w-full pointer-events-auto hover:bg-blue-50/30 transition-colors"
+                          style={{
+                            top: `${marker.position + (quarter * HOUR_HEIGHT) / 4}px`,
+                            height: `${HOUR_HEIGHT / 4}px`,
+                          }}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            const startMinute = quarter * 15
+                            const startTime = `${marker.hour.toString().padStart(2, "0")}:${startMinute.toString().padStart(2, "0")}`
+                            const endMinute = (quarter + 1) * 15
+                            const endHour = endMinute >= 60 ? marker.hour + 1 : marker.hour
+                            const endTime = `${endHour.toString().padStart(2, "0")}:${(endMinute % 60).toString().padStart(2, "0")}`
+                            setPrefilledEntry({ startTime, endTime })
+                            setIsAddModalOpen(true)
+                          }}
+                        />
+                      ))}
                     </div>
                   ))}
                 </div>
