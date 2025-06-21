@@ -5,7 +5,7 @@ import { Pause, Square, Clock, Zap } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import type { TimeEntry } from "@/lib/types"
 // Import the centralized formatTime function
-import { formatTime } from "@/lib/goal-utils"
+import { formatTime, calculateDurationInMinutes } from "@/lib/goal-utils"
 
 interface ActiveTrackingTimeBlockProps {
   entry: TimeEntry
@@ -28,23 +28,20 @@ export default function ActiveTrackingTimeBlock({
   const getDuration = () => {
     if (isActive && elapsedTime > 0) {
       const totalSeconds = Math.floor(elapsedTime / 1000)
-      const hours = Math.floor(totalSeconds / 3600)
-      const minutes = Math.floor((totalSeconds % 3600) / 60)
-      const seconds = totalSeconds % 60
+      // Always round up to the nearest minute
+      const totalMinutes = Math.max(1, Math.ceil(totalSeconds / 60))
+      const hours = Math.floor(totalMinutes / 60)
+      const minutes = totalMinutes % 60
 
       if (hours > 0) {
-        return `${hours}:${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`
+        return `${hours}:${minutes.toString().padStart(2, "0")}:${(totalSeconds % 60).toString().padStart(2, "0")}`
       }
-      return `${minutes}:${seconds.toString().padStart(2, "0")}`
+      return `${minutes}:${(totalSeconds % 60).toString().padStart(2, "0")}`
     }
 
-    const [startHour, startMin] = entry.startTime.split(":").map(Number)
-    const [endHour, endMin] = entry.endTime.split(":").map(Number)
-    const startMinutes = startHour * 60 + startMin
-    const endMinutes = endHour * 60 + endMin
-    const durationMinutes = endMinutes - startMinutes
+    // Use the centralized calculation for regular entries
+    const durationMinutes = calculateDurationInMinutes(entry.startTime, entry.endTime)
     const durationHours = durationMinutes / 60
-
     return formatTime(durationHours, true)
   }
 
