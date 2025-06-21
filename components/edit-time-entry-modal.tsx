@@ -68,72 +68,38 @@ export default function EditTimeEntryModal({
   // Main effect: Set up form when modal opens with entry data
   useEffect(() => {
     if (isOpen && entry && categories.length > 0) {
-      console.log("=== SETTING UP FORM ===")
-      console.log("Entry:", entry)
-      console.log(
-        "Available categories:",
-        categories.map((c) => ({ id: c.id, name: c.name })),
-      )
+      console.log("=== DETAILED DEBUG INFO ===")
+      console.log("Entry object:", JSON.stringify(entry, null, 2))
+      console.log("Categories array:", JSON.stringify(categories, null, 2))
 
       // Set basic form fields
       setValue("startTime", entry.startTime)
       setValue("endTime", entry.endTime)
       setValue("description", entry.description || "")
 
-      // Find category with more thorough matching
-      let foundCategory = null
+      // Let's try a very simple approach - just find by name first
+      const foundByName = categories.find((c) => c.name === entry.categoryName)
+      console.log("Simple name search for '" + entry.categoryName + "':", foundByName)
 
-      // Try exact ID match first
-      if (entry.categoryId) {
-        foundCategory = categories.find((c) => c.id === entry.categoryId)
-        console.log("ID match attempt:", entry.categoryId, "->", foundCategory)
-      }
-
-      // Try exact name match
-      if (!foundCategory && entry.categoryName) {
-        foundCategory = categories.find((c) => c.name === entry.categoryName)
-        console.log("Name match attempt:", entry.categoryName, "->", foundCategory)
-      }
-
-      // Try case-insensitive name match
-      if (!foundCategory && entry.categoryName) {
-        foundCategory = categories.find((c) => c.name.toLowerCase() === entry.categoryName.toLowerCase())
-        console.log("Case-insensitive name match:", entry.categoryName, "->", foundCategory)
-      }
-
-      // Try partial matches
-      if (!foundCategory && entry.categoryName) {
-        foundCategory = categories.find(
-          (c) => c.name.includes(entry.categoryName) || entry.categoryName.includes(c.name),
-        )
-        console.log("Partial match attempt:", entry.categoryName, "->", foundCategory)
-      }
-
-      if (foundCategory) {
-        console.log("✅ FOUND CATEGORY:", foundCategory)
-        setSelectedCategory(foundCategory.id)
-
-        // Handle subcategory
-        if (entry.subcategory && foundCategory.subcategories?.length > 0) {
-          const foundSubcategory = foundCategory.subcategories.find((sub) => sub.name === entry.subcategory)
-          if (foundSubcategory) {
-            console.log("✅ FOUND SUBCATEGORY:", entry.subcategory)
-            setSelectedSubcategory(entry.subcategory)
-          }
-        }
+      if (foundByName) {
+        console.log("✅ Setting category by name:", foundByName.id)
+        setSelectedCategory(foundByName.id)
       } else {
-        console.log("❌ NO CATEGORY MATCH FOUND")
-        console.log("Entry category data:", {
-          categoryId: entry.categoryId,
-          categoryName: entry.categoryName,
-        })
-        console.log(
-          "Available categories:",
-          categories.map((c) => ({
-            id: c.id,
-            name: c.name,
-          })),
-        )
+        // If name doesn't work, try ID
+        const foundById = categories.find((c) => c.id === entry.categoryId)
+        console.log("ID search for '" + entry.categoryId + "':", foundById)
+
+        if (foundById) {
+          console.log("✅ Setting category by ID:", foundById.id)
+          setSelectedCategory(foundById.id)
+        } else {
+          console.log("❌ NO MATCH FOUND AT ALL")
+          console.log("Entry wants:", { id: entry.categoryId, name: entry.categoryName })
+          console.log("Available options:")
+          categories.forEach((cat, index) => {
+            console.log(`  ${index}: ID="${cat.id}" Name="${cat.name}"`)
+          })
+        }
       }
     }
   }, [isOpen, entry, categories, setValue])
@@ -145,18 +111,18 @@ export default function EditTimeEntryModal({
       setSelectedCat(cat)
       setSubcategories(cat?.subcategories || [])
 
-      // Clear subcategory if it doesn't exist in new category
-      if (selectedSubcategory && cat?.subcategories) {
-        const hasSubcategory = cat.subcategories.some((sub) => sub.name === selectedSubcategory)
-        if (!hasSubcategory) {
-          setSelectedSubcategory("")
+      // Handle subcategory if entry has one
+      if (entry?.subcategory && cat?.subcategories) {
+        const foundSubcategory = cat.subcategories.find((sub) => sub.name === entry.subcategory)
+        if (foundSubcategory) {
+          setSelectedSubcategory(entry.subcategory)
         }
       }
     } else {
       setSelectedCat(null)
       setSubcategories([])
     }
-  }, [selectedCategory, categories, selectedSubcategory])
+  }, [selectedCategory, categories, entry])
 
   if (!isOpen || !entry) return null
 
@@ -165,15 +131,6 @@ export default function EditTimeEntryModal({
     if (!category) {
       setValidationError("Please select a valid category")
       return
-    }
-
-    // Validate subcategory if provided
-    if (selectedSubcategory && subcategories.length > 0) {
-      const validSubcategory = subcategories.find((sub) => sub.name === selectedSubcategory)
-      if (!validSubcategory) {
-        setValidationError("Please select a valid activity")
-        return
-      }
     }
 
     setValidationError(null)
@@ -228,6 +185,23 @@ export default function EditTimeEntryModal({
         </div>
 
         <form onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-6">
+          {/* Temporary debug info */}
+          <div className="text-xs bg-yellow-50 p-3 rounded border">
+            <div>
+              <strong>Debug Info:</strong>
+            </div>
+            <div>Entry Category Name: "{entry.categoryName}"</div>
+            <div>Entry Category ID: "{entry.categoryId}"</div>
+            <div>Selected Category: "{selectedCategory}"</div>
+            <div>Available Categories: {categories.length}</div>
+            {categories.map((cat, i) => (
+              <div key={i}>
+                {" "}
+                {i}: "{cat.name}" (ID: {cat.id})
+              </div>
+            ))}
+          </div>
+
           <div>
             <Label className="text-base font-medium">Category</Label>
             <Select value={selectedCategory} onValueChange={setSelectedCategory}>
