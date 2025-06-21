@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useCategoriesQuery } from "@/hooks/use-categories-query"
 import type { User } from "@supabase/supabase-js"
+import { AICategorization } from "@/lib/supabase/ai-categorization-service"
 
 interface EnhancedBottomTrackingWidgetProps {
   onAddEntry: (entry: any) => Promise<void>
@@ -24,6 +25,8 @@ export default function EnhancedBottomTrackingWidget({
   const [elapsedTime, setElapsedTime] = useState(0)
   const [selectedCategory, setSelectedCategory] = useState("")
   const [description, setDescription] = useState("")
+  const [isCategorizingAI, setIsCategorizingAI] = useState(false)
+  const [aiSuggestion, setAiSuggestion] = useState<any>(null)
 
   // Use the React Query hook instead of the old hook
   const { categories, loading: categoriesLoading } = useCategoriesQuery(user)
@@ -97,6 +100,28 @@ export default function EnhancedBottomTrackingWidget({
     setElapsedTime(0)
     setDescription("")
     setSelectedCategory("")
+  }
+
+  const handleDescriptionChange = async (value: string) => {
+    setDescription(value)
+
+    // Trigger AI categorization if description is long enough and no category is selected
+    if (value.length > 10 && !selectedCategory && !isCategorizingAI && categories.length > 0) {
+      setIsCategorizingAI(true)
+      try {
+        const suggestion = await AICategorization.categorizeActivity(value, categories)
+        if (suggestion.confidence > 0.6) {
+          // Only auto-select if confidence is reasonably high
+          setSelectedCategory(suggestion.categoryId)
+          setAiSuggestion(suggestion)
+          console.log("AI suggestion:", suggestion.reasoning)
+        }
+      } catch (error) {
+        console.error("AI categorization failed:", error)
+      } finally {
+        setIsCategorizingAI(false)
+      }
+    }
   }
 
   // Only show category chips when we have real data (not loading and categories exist)
@@ -304,10 +329,15 @@ export default function EnhancedBottomTrackingWidget({
         <div className="relative">
           <Input
             value={description}
-            onChange={(e) => setDescription(e.target.value)}
+            onChange={(e) => handleDescriptionChange(e.target.value)}
             placeholder="Where is your time going right now?"
             className="w-full h-14 rounded-2xl text-center text-lg border-gray-200 bg-gray-50 focus:border-blue-400 shadow-sm placeholder:text-gray-400"
           />
+          {isCategorizingAI && (
+            <div className="absolute right-4 top-1/2 transform -translate-y-1/2">
+              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-500"></div>
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -9,6 +9,7 @@
     "start": "next start"
   },
   "dependencies": {
+    "@ai-sdk/openai": "latest",
     "@hello-pangea/dnd": "latest",
     "@hookform/resolvers": "^3.3.2",
     "@radix-ui/react-dialog": "latest",
@@ -22,8 +23,10 @@
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
+    "ai": "latest",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "https:": "latest",
     "lucide-react": "^0.454.0",
     "next": "14.2.16",
     "next-themes": "latest",
@@ -33,7 +36,7 @@
     "tailwind-merge": "^2.5.5",
     "tailwindcss-animate": "^1.0.7",
     "typescript": "^5",
-    "zod": "^3.22.4"
+    "zod": "latest"
   },
   "devDependencies": {
     "@types/eslint": "^8",
