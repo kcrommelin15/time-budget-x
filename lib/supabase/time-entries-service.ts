@@ -25,7 +25,7 @@ export class TimeEntriesService {
     }
 
     // Transform database format to app format
-    return data.map((entry) => ({
+    return data.map((entry: any) => ({
       id: entry.id,
       categoryId: entry.category_id,
       categoryName: entry.categories.name,
@@ -174,7 +174,7 @@ export class TimeEntriesService {
 
     const categoryTimes: Record<string, number> = {}
 
-    data.forEach((entry) => {
+    data.forEach((entry: any) => {
       const startTime = new Date(entry.start_time)
       const endTime = new Date(entry.end_time)
       const durationMs = endTime.getTime() - startTime.getTime()

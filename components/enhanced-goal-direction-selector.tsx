@@ -4,17 +4,16 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import GoalRangeSelector from "@/components/goal-range-selector"
 import GoalThresholdSelector from "@/components/goal-threshold-selector"
-import type { GoalDirection } from "@/lib/goal-utils"
 
 interface EnhancedGoalDirectionSelectorProps {
-  value: GoalDirection
+  value: "more_is_better" | "less_is_better"
   budget: number
   currentConfig?: {
     targetMin?: number
     targetMax?: number
     threshold?: number
   }
-  onChange: (direction: GoalDirection, config?: any) => void
+  onChange: (direction: "more_is_better" | "less_is_better", config?: any) => void
   onCancel: () => void
 }
 
@@ -25,26 +24,19 @@ export default function EnhancedGoalDirectionSelector({
   onChange,
   onCancel,
 }: EnhancedGoalDirectionSelectorProps) {
-  const [selectedType, setSelectedType] = useState<GoalDirection | null>(null)
+  const [selectedType, setSelectedType] = useState<"more_is_better" | "less_is_better" | null>(null)
   const [showConfig, setShowConfig] = useState(false)
 
   const options = [
     {
-      value: "target_range" as GoalDirection,
-      symbol: "○",
-      label: "Target",
-      description: "Aim for exact budget with acceptable range",
-      color: "bg-blue-500",
-    },
-    {
-      value: "more_is_better" as GoalDirection,
+      value: "more_is_better" as "more_is_better" | "less_is_better",
       symbol: "+",
       label: "More+",
       description: "More time is better - set minimum goal",
       color: "bg-green-500",
     },
     {
-      value: "less_is_better" as GoalDirection,
+      value: "less_is_better" as "more_is_better" | "less_is_better",
       symbol: "-",
       label: "Less-",
       description: "Less time is better - set maximum limit",
@@ -52,7 +44,7 @@ export default function EnhancedGoalDirectionSelector({
     },
   ]
 
-  const handleTypeSelect = (type: GoalDirection) => {
+  const handleTypeSelect = (type: "more_is_better" | "less_is_better") => {
     setSelectedType(type)
     setShowConfig(true)
   }
@@ -70,27 +62,15 @@ export default function EnhancedGoalDirectionSelector({
 
   // Show configuration screen
   if (showConfig && selectedType) {
-    if (selectedType === "target_range") {
-      return (
-        <GoalRangeSelector
-          budget={budget}
-          currentMin={currentConfig?.targetMin}
-          currentMax={currentConfig?.targetMax}
-          onSave={(min, max) => handleConfigSave({ targetMin: min, targetMax: max })}
-          onCancel={handleConfigCancel}
-        />
-      )
-    } else {
-      return (
-        <GoalThresholdSelector
-          goalType={selectedType}
-          budget={budget}
-          currentThreshold={currentConfig?.threshold}
-          onSave={(threshold) => handleConfigSave({ threshold })}
-          onCancel={handleConfigCancel}
-        />
-      )
-    }
+    return (
+      <GoalThresholdSelector
+        goalType={selectedType}
+        budget={budget}
+        currentThreshold={currentConfig?.threshold}
+        onSave={(threshold) => handleConfigSave({ threshold })}
+        onCancel={handleConfigCancel}
+      />
+    )
   }
 
   // Show type selection

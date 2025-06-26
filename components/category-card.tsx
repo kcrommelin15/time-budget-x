@@ -3,7 +3,7 @@
 import React from "react"
 
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import type { Category } from "@/types"
+import type { Category } from "@/lib/types"
 import { MoreVertical, Edit, Trash2 } from "lucide-react"
 
 interface CategoryCardProps {
@@ -22,7 +22,6 @@ const CategoryCard: React.FC<CategoryCardProps> = ({ category, onEdit, onDelete 
   return (
     <div className="border rounded-md p-4">
       <h3 className="text-lg font-semibold">{category.name}</h3>
-      <p className="text-sm text-gray-500">{category.description}</p>
       <div className="flex justify-end mt-4">
         <DropdownMenu>
           <DropdownMenuTrigger>

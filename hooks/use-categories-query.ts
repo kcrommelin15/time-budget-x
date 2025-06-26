@@ -151,7 +151,7 @@ export function useCategoriesQuery(user: User | null | undefined) {
       await DataService.createSubcategory(categoryId, {
         name: subcategoryName,
         budget,
-        goalDirection: "target_range",
+        goalDirection: "more_is_better",
       })
       return { categoryId, subcategoryName, budget }
     },

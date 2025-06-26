@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find:*)",
+      "Bash(ls:*)",
+      "Bash(rm:*)",
+      "Bash(npm run build:*)",
+      "Bash(npm run lint)",
+      "Bash(npx tsc:*)",
+      "Bash(npm install)",
+      "Bash(npx eslint:*)",
+      "Bash(rg:*)",
+      "Bash(for component in tooltip toggle toggle-group toast tabs switch slider sidebar sheet separator select scroll-area radio-group progress popover navigation-menu menubar label hover-card form dropdown-menu dialog context-menu command collapsible checkbox button breadcrumb avatar aspect-ratio)",
+      "Bash(do echo \"=== $component ===\")",
+      "Bash(done)",
+      "WebFetch(domain:docs.anthropic.com)",
+      "Bash(npm install:*)",
+      "Bash(claude mcp add:*)"
+    ],
+    "deny": []
+  }
+}

@@ -7,14 +7,14 @@ import UnifiedTimeInput from "@/components/unified-time-input"
 import SmartBudgetIndicator from "@/components/smart-budget-indicator"
 import GoalDirectionSelector from "@/components/goal-direction-selector"
 import { useState } from "react"
-import type { GoalDirection } from "@/lib/goal-utils"
+// GoalDirection is defined as "more_is_better" | "less_is_better" in types
 
 interface Subcategory {
   name: string
   budget: number
   timeUsed: number
   isFixed?: boolean
-  goalDirection?: GoalDirection
+  goalDirection?: "more_is_better" | "less_is_better"
 }
 
 interface DraggableSubcategoryItemProps {
@@ -25,7 +25,7 @@ interface DraggableSubcategoryItemProps {
   isEditMode: boolean
   onEdit: (subcategoryName: string, newBudget: number) => void
   onDelete: (subcategoryName: string) => void
-  onGoalDirectionEdit?: (subcategoryName: string, direction: GoalDirection) => void
+  onGoalDirectionEdit?: (subcategoryName: string, direction: "more_is_better" | "less_is_better") => void
 }
 
 export default function DraggableSubcategoryItem({
@@ -46,7 +46,6 @@ export default function DraggableSubcategoryItem({
         return "+"
       case "less_is_better":
         return "-"
-      case "target_range":
       default:
         return "○"
     }
@@ -58,7 +57,6 @@ export default function DraggableSubcategoryItem({
         return "text-green-600 bg-green-100"
       case "less_is_better":
         return "text-orange-600 bg-orange-100"
-      case "target_range":
       default:
         return "text-blue-600 bg-blue-100"
     }
@@ -101,7 +99,7 @@ export default function DraggableSubcategoryItem({
                   {!subcategory.isFixed && (
                     <span
                       className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold ${getGoalTypeColor()}`}
-                      title={`Goal: ${subcategory.goalDirection || "target_range"}`}
+                      title={`Goal: ${subcategory.goalDirection || "more_is_better"}`}
                     >
                       {getGoalTypeSymbol()}
                     </span>
@@ -157,7 +155,7 @@ export default function DraggableSubcategoryItem({
           {isEditingGoal && isEditMode && !subcategory.isFixed && (
             <div className="px-4 pb-4 border-t border-gray-100 pt-4">
               <GoalDirectionSelector
-                value={subcategory.goalDirection || "target_range"}
+                value={subcategory.goalDirection || "more_is_better"}
                 onChange={(direction) => {
                   onGoalDirectionEdit?.(subcategory.name, direction)
                   setIsEditingGoal(false)

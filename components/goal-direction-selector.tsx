@@ -1,32 +1,24 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
-import type { GoalDirection } from "@/lib/goal-utils"
 
 interface GoalDirectionSelectorProps {
-  value: GoalDirection
-  onChange: (direction: GoalDirection) => void
+  value: "more_is_better" | "less_is_better"
+  onChange: (direction: "more_is_better" | "less_is_better") => void
   disabled?: boolean
 }
 
 export default function GoalDirectionSelector({ value, onChange, disabled = false }: GoalDirectionSelectorProps) {
   const options = [
     {
-      value: "target_range" as GoalDirection,
-      symbol: "○",
-      label: "Target",
-      description: "Aim for exact budget",
-      color: "bg-blue-500",
-    },
-    {
-      value: "more_is_better" as GoalDirection,
+      value: "more_is_better" as "more_is_better" | "less_is_better",
       symbol: "+",
       label: "More+",
       description: "More time is better",
       color: "bg-green-500",
     },
     {
-      value: "less_is_better" as GoalDirection,
+      value: "less_is_better" as "more_is_better" | "less_is_better",
       symbol: "-",
       label: "Less-",
       description: "Less time is better",

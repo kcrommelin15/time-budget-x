@@ -118,7 +118,7 @@ export default function GoalThresholdSelector({
         </Label>
         <Slider
           value={[threshold]}
-          onValueChange={(value) => setThreshold(value[0])}
+          onValueChange={(value: number[]) => setThreshold(value[0])}
           min={minThreshold}
           max={maxThreshold}
           step={0.25}

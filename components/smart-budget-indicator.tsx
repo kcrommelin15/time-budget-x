@@ -28,7 +28,6 @@ export default function SmartBudgetIndicator({
         return "+"
       case "less_is_better":
         return "-"
-      case "target_range":
       default:
         return "○"
     }

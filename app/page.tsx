@@ -9,7 +9,7 @@ import Navigation from "@/components/navigation"
 import FloatingToggle from "@/components/floating-toggle"
 import AuthModal from "@/components/auth-modal"
 import { createClient } from "@/lib/supabase/client"
-import type { User } from "@supabase/supabase-js"
+import type { User, AuthChangeEvent, Session } from "@supabase/supabase-js"
 
 export default function TimeBudgetApp() {
   const [activeScreen, setActiveScreen] = useState<"budget" | "timeline" | "insights" | "settings">("budget")
@@ -89,7 +89,7 @@ export default function TimeBudgetApp() {
     // Listen for auth changes
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
+    } = supabase.auth.onAuthStateChange(async (event: AuthChangeEvent, session: Session | null) => {
       if (!mounted) return
 
       console.log("Auth state changed:", event)

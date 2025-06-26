@@ -26,10 +26,10 @@ export const mockCategories: Category[] = [
         name: "Managing",
         budget: 5,
         timeUsed: 1,
-        goalDirection: "target_range",
+        goalDirection: "more_is_better",
         goalConfig: { targetMin: 4, targetMax: 6 },
       },
-      { name: "Other", budget: 10, timeUsed: 1, goalDirection: "target_range" },
+      { name: "Other", budget: 10, timeUsed: 1, goalDirection: "more_is_better" },
     ],
   },
   {
@@ -43,7 +43,7 @@ export const mockCategories: Category[] = [
         name: "Domestic",
         budget: 3,
         timeUsed: 2,
-        goalDirection: "target_range",
+        goalDirection: "more_is_better",
         goalConfig: { targetMin: 2.5, targetMax: 3.5 },
       },
       {

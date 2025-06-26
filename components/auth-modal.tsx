@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { createClient } from "@/lib/supabase/client"
-import type { User as SupabaseUser } from "@supabase/supabase-js"
+import type { User as SupabaseUser, AuthChangeEvent, Session } from "@supabase/supabase-js"
 
 interface AuthModalProps {
   isOpen: boolean
@@ -61,7 +61,7 @@ export default function AuthModal({ isOpen, onClose, onAuth, isInitialLoad = fal
   useEffect(() => {
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
+    } = supabase.auth.onAuthStateChange((event: AuthChangeEvent, session: Session | null) => {
       if (event === "SIGNED_IN" && session?.user && step === "verify-email") {
         onAuth(session.user)
         onClose()
@@ -357,7 +357,7 @@ export default function AuthModal({ isOpen, onClose, onAuth, isInitialLoad = fal
               {isInitialLoad && (
                 <div className="text-center mb-6">
                   <button onClick={onClose} className="text-gray-600 hover:text-gray-800 font-medium">
-                    I'll do it later
+                    I&apos;ll do it later
                   </button>
                 </div>
               )}
@@ -438,7 +438,7 @@ export default function AuthModal({ isOpen, onClose, onAuth, isInitialLoad = fal
 
               <div className="mt-4 text-center">
                 <button onClick={() => setStep("signup")} className="text-gray-600 hover:text-gray-800 text-sm">
-                  Don't have an account? Create one instead
+                  Don&apos;t have an account? Create one instead
                 </button>
               </div>
             </>
@@ -531,7 +531,7 @@ export default function AuthModal({ isOpen, onClose, onAuth, isInitialLoad = fal
                 <div>
                   <h3 className="text-lg font-semibold mb-2">Check your email</h3>
                   <p className="text-sm text-gray-600 mb-4">
-                    We've sent a verification link to <span className="font-medium">{email}</span>
+                    We&apos;ve sent a verification link to <span className="font-medium">{email}</span>
                   </p>
                   <p className="text-sm text-gray-500 mb-4">
                     Click the link in the email to verify your account. After verification, you can close this window
@@ -570,11 +570,11 @@ export default function AuthModal({ isOpen, onClose, onAuth, isInitialLoad = fal
                     variant="ghost"
                     className="w-full h-12 rounded-2xl"
                   >
-                    I've verified my email, let me sign in
+                    I&apos;ve verified my email, let me sign in
                   </Button>
 
                   <div className="text-xs text-gray-500 text-center">
-                    Didn't receive the email? Check your spam folder or try resending.
+                    Didn&apos;t receive the email? Check your spam folder or try resending.
                   </div>
                 </div>
               </div>

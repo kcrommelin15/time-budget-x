@@ -9,8 +9,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch"
 import { mockCategories } from "@/lib/mock-data"
 import type { TimeEntry } from "@/lib/types"
-// Import the centralized formatTime function
-import { formatTime } from "@/lib/goal-utils"
+// Local formatDuration function for displaying durations
+const formatDuration = (hours: number): string => {
+  const totalMinutes = Math.ceil(hours * 60)
+  const wholeHours = Math.floor(totalMinutes / 60)
+  const remainingMinutes = totalMinutes % 60
+  
+  if (wholeHours > 0) {
+    return remainingMinutes > 0 ? `${wholeHours}h ${remainingMinutes}m` : `${wholeHours}h`
+  }
+  return `${remainingMinutes}m`
+}
 
 interface EnhancedActivityDetailsModalProps {
   isOpen: boolean
@@ -77,7 +86,7 @@ export default function EnhancedActivityDetailsModal({
     const durationMinutes = endMinutes - startMinutes
     const durationHours = durationMinutes / 60
 
-    return formatTime(durationHours, true)
+    return formatDuration(durationHours)
   }
 
   const formatDate = (dateString: string) => {

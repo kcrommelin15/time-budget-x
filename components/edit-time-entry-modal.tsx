@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useCategories } from "@/hooks/use-categories"
-import type { TimeEntry } from "@/lib/types"
+import type { TimeEntry, Category, Subcategory } from "@/lib/types"
 import type { User } from "@supabase/supabase-js"
 
 interface EditTimeEntryModalProps {
@@ -34,10 +34,10 @@ export default function EditTimeEntryModal({
   const [selectedCategory, setSelectedCategory] = useState("")
   const [selectedSubcategory, setSelectedSubcategory] = useState("")
   const [validationError, setValidationError] = useState<string | null>(null)
-  const { categories } = useCategories(user)
+  const { categories } = useCategories(user || null)
 
-  const [selectedCat, setSelectedCat] = useState(null)
-  const [subcategories, setSubcategories] = useState([])
+  const [selectedCat, setSelectedCat] = useState<Category | null>(null)
+  const [subcategories, setSubcategories] = useState<Subcategory[]>([])
 
   const {
     register,
@@ -110,12 +110,12 @@ export default function EditTimeEntryModal({
         setSelectedCategory(foundCategory.id)
 
         // Handle subcategory - use a longer delay to ensure category is fully set
-        if (entry.subcategory && foundCategory.subcategories?.length > 0) {
+        if (entry.subcategory && foundCategory.subcategories && foundCategory.subcategories.length > 0) {
           setTimeout(() => {
-            const foundSubcategory = foundCategory.subcategories.find((sub) => sub.name === entry.subcategory)
+            const foundSubcategory = foundCategory.subcategories?.find((sub) => sub.name === entry.subcategory)
             if (foundSubcategory) {
               console.log("✅ Setting subcategory:", entry.subcategory)
-              setSelectedSubcategory(entry.subcategory)
+              setSelectedSubcategory(entry.subcategory || "")
             } else {
               console.log("❌ Subcategory not found:", entry.subcategory)
             }
@@ -154,7 +154,7 @@ export default function EditTimeEntryModal({
   useEffect(() => {
     if (selectedCategory && categories.length > 0) {
       const cat = categories.find((c) => c.id === selectedCategory)
-      setSelectedCat(cat)
+      setSelectedCat(cat || null)
       setSubcategories(cat?.subcategories || [])
 
       // Clear subcategory if it doesn't exist in new category

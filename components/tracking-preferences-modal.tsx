@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { useTrackingPreferences } from "@/hooks/use-tracking-preferences"
-import { TrackingPreferencesService, type DaySchedule } from "@/lib/supabase/tracking-preferences-service"
+import { TrackingPreferencesService, type DaySchedule, type WeeklySchedule } from "@/lib/supabase/tracking-preferences-service"
 import type { User } from "@supabase/supabase-js"
 
 interface TrackingPreferencesModalProps {
@@ -50,7 +50,7 @@ export default function TrackingPreferencesModal({
   // Initialize local state from preferences (only once when modal opens)
   useEffect(() => {
     if (isOpen && preferences && !initializedRef.current) {
-      setLocalWeeklySchedule(preferences.weekly_schedule)
+      setLocalWeeklySchedule(preferences.weekly_schedule as unknown as Record<string, DaySchedule>)
       setHasUnsavedChanges(false)
       initializedRef.current = true
     }
@@ -102,7 +102,7 @@ export default function TrackingPreferencesModal({
       try {
         setIsSaving(true)
 
-        await updateWeeklySchedule(localWeeklySchedule)
+        await updateWeeklySchedule(localWeeklySchedule as unknown as WeeklySchedule)
 
         setHasUnsavedChanges(false)
 
@@ -246,7 +246,7 @@ export default function TrackingPreferencesModal({
                             className="w-20 h-8 text-center border border-gray-300 rounded text-xs"
                             disabled={loading}
                             style={{
-                              WebkitAppearance: isMobile ? "none" : "auto",
+                              WebkitAppearance: isMobile ? "none" : undefined,
                             }}
                           />
                           <span className="text-gray-600">to</span>
@@ -257,7 +257,7 @@ export default function TrackingPreferencesModal({
                             className="w-20 h-8 text-center border border-gray-300 rounded text-xs"
                             disabled={loading}
                             style={{
-                              WebkitAppearance: isMobile ? "none" : "auto",
+                              WebkitAppearance: isMobile ? "none" : undefined,
                             }}
                           />
                         </>

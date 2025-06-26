@@ -139,7 +139,7 @@ export function useCategories(user: User | null) {
         await DataService.createSubcategory(categoryId, {
           name: subcategoryName,
           budget,
-          goalDirection: "target_range",
+          goalDirection: "more_is_better",
         })
         // Reload categories to get updated data
         await loadUserCategories()

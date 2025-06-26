@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useCategories } from "@/hooks/use-categories"
-import type { TimeEntry } from "@/lib/types"
+import type { TimeEntry, Category, Subcategory } from "@/lib/types"
 import type { User } from "@supabase/supabase-js"
 
 // Update the interface to include user and onTimeUsageUpdate
@@ -34,10 +34,10 @@ export default function AddTimeEntryModal({
   const [selectedCategory, setSelectedCategory] = useState("")
   const [selectedSubcategory, setSelectedSubcategory] = useState("")
   const [validationError, setValidationError] = useState<string | null>(null)
-  const { categories } = useCategories(user) // Moved hook to the top level
+  const { categories } = useCategories(user || null) // Moved hook to the top level
 
-  const [selectedCat, setSelectedCat] = useState(null)
-  const [subcategories, setSubcategories] = useState([])
+  const [selectedCat, setSelectedCat] = useState<Category | null>(null)
+  const [subcategories, setSubcategories] = useState<Subcategory[]>([])
 
   const {
     register,
@@ -64,7 +64,7 @@ export default function AddTimeEntryModal({
   useEffect(() => {
     if (selectedCategory) {
       const cat = categories.find((c) => c.id === selectedCategory)
-      setSelectedCat(cat)
+      setSelectedCat(cat || null)
       setSubcategories(cat?.subcategories || [])
     } else {
       setSelectedCat(null)

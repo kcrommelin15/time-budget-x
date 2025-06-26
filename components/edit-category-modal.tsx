@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label"
 import UnifiedTimeInput from "@/components/unified-time-input"
 import EnhancedSubcategoryList from "@/components/enhanced-subcategory-list"
 import type { Category, Subcategory } from "@/lib/types"
-import type { GoalDirection } from "@/lib/goal-utils"
+// GoalDirection is defined as "more_is_better" | "less_is_better" in types
 
 interface EditCategoryModalProps {
   isOpen: boolean
@@ -140,7 +140,7 @@ export default function EditCategoryModal({
     setSubcategories(withoutOther)
   }
 
-  const handleGoalDirectionEdit = (subcategoryName: string, direction: GoalDirection) => {
+  const handleGoalDirectionEdit = (subcategoryName: string, direction?: "more_is_better" | "less_is_better") => {
     setSubcategories(
       subcategories.map((sub) => (sub.name === subcategoryName ? { ...sub, goalDirection: direction } : sub)),
     )
@@ -154,7 +154,7 @@ export default function EditCategoryModal({
           name: newSubcategoryName.trim(),
           budget: 0,
           timeUsed: 0,
-          goalDirection: "target_range",
+          goalDirection: "more_is_better",
         },
       ])
       setNewSubcategoryName("")

@@ -7,14 +7,13 @@ import UnifiedTimeInput from "@/components/unified-time-input"
 import SmartBudgetIndicator from "@/components/smart-budget-indicator"
 import SimpleGoalSelector from "@/components/simple-goal-selector"
 import { useState } from "react"
-import type { GoalDirection } from "@/lib/goal-utils"
 
 interface Subcategory {
   name: string
   budget: number
   timeUsed: number
   isFixed?: boolean
-  goalDirection?: GoalDirection
+  goalDirection?: "more_is_better" | "less_is_better"
   goalConfig?: {
     targetMin?: number
     targetMax?: number
@@ -30,7 +29,7 @@ interface MobileSubcategoryItemProps {
   isEditMode: boolean
   onEdit: (subcategoryName: string, newBudget: number) => void
   onDelete: (subcategoryName: string) => void
-  onGoalDirectionEdit?: (subcategoryName: string, direction?: GoalDirection) => void
+  onGoalDirectionEdit?: (subcategoryName: string, direction?: "more_is_better" | "less_is_better") => void
 }
 
 export default function MobileSubcategoryItem({

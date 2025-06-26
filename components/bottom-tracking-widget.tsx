@@ -115,7 +115,7 @@ export default function BottomTrackingWidget({ onAddEntry, isDesktop = false }: 
             </div>
           )}
 
-          {description && <p className="text-sm text-gray-600 mb-2">"{description}"</p>}
+          {description && <p className="text-sm text-gray-600 mb-2">&quot;{description}&quot;</p>}
 
           <div className="text-3xl font-bold text-gray-900 font-mono">{formatTime(elapsedTime)}</div>
         </div>

@@ -70,7 +70,7 @@ export default function ActivityDetailsModal({ isOpen, onClose, entry, onSave, o
         startTime: data.startTime,
         endTime: data.endTime,
         date: data.date,
-        status: approved ? "confirmed" : "pending",
+        status: approved ? "confirmed" as const : "pending" as const,
       }
       onSave(updatedEntry)
     }

@@ -21,7 +21,7 @@ export class DataService {
     }
 
     // Transform database format to app format
-    return categoriesData.map((cat) => ({
+    return categoriesData.map((cat: any) => ({
       id: cat.id,
       name: cat.name,
       weeklyBudget: cat.weekly_budget,
@@ -256,7 +256,7 @@ export class DataService {
       const { data: allCategories } = await supabase.from("categories").select("id").eq("user_id", userData.user.id)
 
       if (allCategories) {
-        const categoriesWithNoTime = allCategories.filter((cat) => !categoryTimes[cat.id]).map((cat) => cat.id)
+        const categoriesWithNoTime = allCategories.filter((cat: any) => !categoryTimes[cat.id]).map((cat: any) => cat.id)
 
         if (categoriesWithNoTime.length > 0) {
           await supabase

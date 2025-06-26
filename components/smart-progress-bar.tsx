@@ -14,7 +14,6 @@ export default function SmartProgressBar({ subcategory, categoryColor, showDetai
   const statusColor = getStatusColor(progress.status)
 
   const usagePercentage = subcategory.budget > 0 ? (subcategory.timeUsed / subcategory.budget) * 100 : 0
-  const expectedPercentage = subcategory.budget > 0 ? (progress.expectedUsage / subcategory.budget) * 100 : 0
 
   // Goal direction indicators
   const goalIcon =
@@ -30,14 +29,14 @@ export default function SmartProgressBar({ subcategory, categoryColor, showDetai
           {/* Pace line - enhanced visualization */}
           <div
             className="absolute top-0 h-4 flex items-center justify-center transition-all duration-300"
-            style={{ left: `${Math.min(95, Math.max(5, expectedPercentage))}%` }}
+            style={{ left: `${Math.min(95, Math.max(5, usagePercentage))}%` }}
           >
             {/* Pace line with goal direction indicator */}
             <div className="relative">
               {/* Main pace line */}
               <div
                 className="w-0.5 h-4 bg-gray-600 opacity-80 shadow-sm"
-                title={`Expected: ${progress.expectedUsage.toFixed(1)}h`}
+                title={`Used: ${subcategory.timeUsed.toFixed(1)}h`}
               />
 
               {/* Goal direction indicator above the line */}
@@ -85,7 +84,7 @@ export default function SmartProgressBar({ subcategory, categoryColor, showDetai
           {/* Week progress background indicator */}
           <div
             className="absolute top-0 left-0 h-4 bg-blue-50 opacity-30 rounded-full transition-all duration-300"
-            style={{ width: `${expectedPercentage}%` }}
+            style={{ width: `${usagePercentage}%` }}
           />
         </div>
       </div>
@@ -115,8 +114,8 @@ export default function SmartProgressBar({ subcategory, categoryColor, showDetai
       )}
 
       {/* Projection */}
-      {showDetails && progress.weekProgress > 0.1 && (
-        <div className="text-sm text-gray-600">Pace: {progress.projectedTotal.toFixed(1)}h by week end</div>
+      {showDetails && (
+        <div className="text-sm text-gray-600">Current: {subcategory.timeUsed.toFixed(1)}h / {subcategory.budget.toFixed(1)}h</div>
       )}
     </div>
   )
