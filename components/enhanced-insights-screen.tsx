@@ -41,7 +41,7 @@ export default function EnhancedInsightsScreen() {
           <h1 className="text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent">
             Insights
           </h1>
-          <p className="text-gray-600 mt-2">Track your time patterns and productivity</p>
+          <p className="text-gray-600 mt-2">Your time is valuable. Let's make it count.</p>
         </div>
 
         {/* Period Selector */}
