@@ -5,7 +5,6 @@ import { BarChart3, TrendingUp, Clock, Target, Award, Zap } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 export default function EnhancedInsightsScreen() {
-  const [selectedPeriod, setSelectedPeriod] = useState("week")
 
   // Mock data for insights
   const weeklyData = {
