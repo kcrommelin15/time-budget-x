@@ -4,7 +4,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository Overview
 
-This is a Model Context Protocol (MCP) integration for Vercel's REST API. It implements tools for interacting with Vercel's APIs, enabling LLMs and other applications to programmatically manage Vercel deployments, projects, teams and environment variables.
+This is a time tracking application built with Next.js, React, and Supabase. It features AI-powered auto-categorization of activities using OpenAI and provides real-time time tracking with various productivity analytics.
+
+## Key Features
+
+- **AI Auto-Categorization**: Uses OpenAI to automatically categorize user activities based on text descriptions
+- **Real-time Time Tracking**: Track activities with start/stop functionality and 10-second minimum validation
+- **Category Management**: Organize activities into categories and subcategories  
+- **Supabase Integration**: Uses Supabase for authentication, database, and Edge Functions
+- **Responsive Design**: Works on both desktop and mobile devices
 
 ## Commands
 
@@ -14,7 +22,7 @@ This is a Model Context Protocol (MCP) integration for Vercel's REST API. It imp
 # Install dependencies
 npm install
 
-# Run the MCP server in development mode
+# Run the development server
 npm run dev
 
 # Build the project
@@ -22,78 +30,117 @@ npm run build
 
 # Start the production server
 npm start
+
+# Run linting
+npm run lint
 ```
 
-### Docker Commands
+### Supabase Edge Functions
 
 ```bash
-# Build the Docker image
-docker build -t vercel-mcp .
+# Deploy edge functions (requires Supabase CLI)
+supabase functions deploy categorize-activity
 
-# Run in development mode with live reload
-docker build --target builder -t vercel-mcp-dev .
-docker run -it --rm \
-  -e VERCEL_API_TOKEN=your_token_here \
-  -p 3399:3399 \
-  -v $(pwd)/src:/app/src \
-  vercel-mcp-dev
-
-# Run in production mode
-docker run -it --rm \
-  -e VERCEL_API_TOKEN=your_token_here \
-  -p 3399:3399 \
-  vercel-mcp
+# Test edge function locally
+supabase functions serve
 ```
 
 ## Environment Variables
 
-- `VERCEL_API_TOKEN`: Required Vercel API token for authentication with Vercel API.
+- `SUPABASE_URL`: Supabase project URL
+- `SUPABASE_ANON_KEY`: Supabase anonymous key
+- `OPENAI_API_KEY`: OpenAI API key for auto-categorization feature (used in Edge Functions)
 
 ## Architecture
 
-This project is built as a Model Context Protocol (MCP) server that implements a set of tools for interacting with the Vercel API. Key components include:
+This is a Next.js time tracking application with the following key components:
 
-1. **Server Initialization (`src/index.ts`)**:
+1. **Frontend (`app/` and `components/`)**:
+   - Next.js 14 App Router for navigation and API routes
+   - React components for UI including enhanced tracking widgets
+   - Tailwind CSS for styling with shadcn/ui components
 
-   - Entry point that creates an MCP server instance
-   - Registers tool handlers and configures error handling
+2. **Auto-Categorization System**:
+   - **Supabase Edge Function** (`supabase/functions/categorize-activity/`): OpenAI integration for activity categorization
+   - **API Route** (`app/api/supabase/functions/categorize-activity/route.ts`): Next.js proxy to Edge Function
+   - **Enhanced Tracking Widget** (`components/enhanced-bottom-tracking-widget.tsx`): UI with AI suggestions
 
-2. **Tools Definition (`src/constants/tools.ts`)**:
+3. **Data Layer (`lib/`)**:
+   - Supabase client configuration for authentication and database
+   - Type definitions for categories, time entries, and API responses
+   - Mock data for development and fallback scenarios
 
-   - Defines the schemas and descriptions for all available tools
-   - Each tool has a defined name, description, and input schema
+4. **Key Features Implementation**:
+   - **10-second validation**: Prevents accidental short entries
+   - **Enter-triggered categorization**: AI categorizes when user presses Enter
+   - **Automatic selection**: Highest confidence category is auto-selected
+   - **Error handling**: Throws errors instead of fallback categorization
 
-3. **Tool Handlers (src/tools/<domain>/handlers.ts)**:
+## Auto-Categorization API
 
-   - Implements the actual tool functionality
-   - Four main domains: deployments, environments, projects, and teams
-   - Each handler validates inputs, makes API calls, and formats responses
+### Supabase Edge Function
 
-4. **API Utilities (`src/utils/api.ts` & `src/utils/config.ts`)**:
+**Location**: `supabase/functions/categorize-activity/index.ts`
 
-   - Handles authentication and API requests to Vercel
-   - Configures API endpoints and tokens
+**Purpose**: Uses OpenAI GPT-3.5-turbo to categorize activity descriptions
 
-5. **Type Definitions (src/tools/<domain>/types.ts)**:
-   - TypeScript interfaces for Vercel API responses and parameters
-   - Ensures type safety throughout the application
+**Input**:
+```typescript
+{
+  description: string;
+  userId: string;
+}
+```
 
-The application follows a modular architecture where:
+**Output**:
+```typescript
+{
+  categoryId: string;
+  categoryName: string;
+  subcategory?: string;
+  confidence: number; // 0-1 scale
+}
+```
 
-- Each Vercel API domain has its own directory with handlers, schemas, and types
-- The server routes tool calls to the appropriate handler based on the tool name
-- All handlers use a common API utility for making authenticated requests to Vercel
+**Features**:
+- Fetches user's custom categories from database
+- Returns errors if categories unavailable or OpenAI fails
+- Always auto-selects the highest confidence category
+- Handles authentication via Supabase Auth
 
 ## Development Workflow
 
-1. Define a new tool in `src/constants/tools.ts`
-2. Create handler, schema, and types files in the appropriate domain directory
-3. Register the tool handler in `src/index.ts`
-4. Test the tool functionality with an MCP client
+### Adding New Features
 
-When adding a new tool, follow the pattern established in existing tools:
+1. **Create new components** in `components/` following existing patterns
+2. **Add API routes** in `app/api/` for backend functionality  
+3. **Update types** in `lib/types.ts` for new data structures
+4. **Test with mock data** using `lib/mock-data.ts`
 
-1. Create a schema definition using Zod
-2. Implement a handler function that validates inputs and calls the Vercel API
-3. Define types for request parameters and response data
-4. Register the tool in the `VERCEL_TOOLS` array and add the handler to the switch statement in index.ts
+### Working with Supabase Edge Functions
+
+1. **Create function** in `supabase/functions/[function-name]/`
+2. **Deploy function** with `supabase functions deploy [function-name]`
+3. **Add API route** in `app/api/` to proxy to the Edge Function
+4. **Update environment variables** as needed
+
+### Auto-Categorization Integration
+
+To integrate AI categorization in other components:
+
+```typescript
+const performAutoCategorization = async (description: string) => {
+  const { data: { session } } = await supabase.auth.getSession()
+  
+  const response = await fetch('/api/supabase/functions/categorize-activity', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${session.access_token}`,
+    },
+    body: JSON.stringify({ description, userId: session.user.id }),
+  })
+  
+  return response.json()
+}
+```
