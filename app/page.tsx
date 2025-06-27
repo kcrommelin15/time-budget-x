@@ -132,33 +132,31 @@ export default function TimeBudgetApp() {
   // Show loading spinner while determining auth state
   if (user === undefined) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading...</p>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground font-medium">Loading...</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 relative">
-      {/* Subtle gradient overlay for extra glossiness */}
-      <div className="absolute inset-0 bg-gradient-to-tr from-blue-50/30 via-transparent to-purple-50/20 pointer-events-none"></div>
+    <div className="min-h-screen bg-background relative">
 
       {authError && (
-        <div className="fixed top-4 left-1/2 transform -translate-x-1/2 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded z-50">
+        <div className="fixed top-4 left-1/2 transform -translate-x-1/2 bg-destructive/10 border border-destructive/20 text-destructive px-6 py-3 rounded-xl z-50 smooth-shadow font-medium">
           <p>{authError}</p>
-          <button onClick={() => setAuthError(null)} className="absolute top-1 right-1 text-red-500">
+          <button onClick={() => setAuthError(null)} className="absolute top-2 right-2 text-destructive hover:text-destructive/80">
             ×
           </button>
         </div>
       )}
 
       {verificationMessage && (
-        <div className="fixed top-4 left-1/2 transform -translate-x-1/2 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded z-50">
+        <div className="fixed top-4 left-1/2 transform -translate-x-1/2 bg-green-500/10 border border-green-500/20 text-green-700 dark:text-green-400 px-6 py-3 rounded-xl z-50 smooth-shadow font-medium">
           <p>{verificationMessage}</p>
-          <button onClick={() => setVerificationMessage(null)} className="absolute top-1 right-1 text-green-500">
+          <button onClick={() => setVerificationMessage(null)} className="absolute top-2 right-2 text-green-600 hover:text-green-500">
             ×
           </button>
         </div>
@@ -167,7 +165,7 @@ export default function TimeBudgetApp() {
       <div className="max-w-7xl mx-auto min-h-screen relative z-10">
         {/* Desktop Layout - Single Page */}
         <div className="hidden lg:block min-h-screen">
-          <div className="max-w-4xl mx-auto relative">
+          <div className="max-w-5xl mx-auto relative p-6">
             {activeScreen === "budget" && <BudgetScreen isDesktop={true} user={user} />}
             {activeScreen === "timeline" && <TimelineScreen isDesktop={true} user={user} />}
             {activeScreen === "insights" && <EnhancedInsightsScreen />}
@@ -178,7 +176,7 @@ export default function TimeBudgetApp() {
         </div>
 
         {/* Mobile Layout */}
-        <div className="lg:hidden max-w-md mx-auto bg-white/60 backdrop-blur-xl min-h-screen relative rounded-t-3xl mt-4 shadow-2xl border border-white/40 overflow-hidden">
+        <div className="lg:hidden max-w-md mx-auto glass-effect min-h-screen relative rounded-t-2xl mt-2 smooth-shadow-lg border border-border/20 overflow-hidden">
           {activeScreen === "budget" && <BudgetScreen user={user} />}
           {activeScreen === "timeline" && <TimelineScreen user={user} />}
           {activeScreen === "insights" && <EnhancedInsightsScreen />}

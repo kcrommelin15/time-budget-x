@@ -20,20 +20,20 @@ const CategoryCard: React.FC<CategoryCardProps> = ({ category, onEdit, onDelete 
   const [isEditModalOpen, setIsEditModalOpen] = React.useState<boolean>(false)
 
   return (
-    <div className="border rounded-md p-4">
-      <h3 className="text-lg font-semibold">{category.name}</h3>
-      <p className="text-sm text-gray-500">{category.description}</p>
+    <div className="border border-border rounded-xl p-5 smooth-shadow hover:smooth-shadow-lg transition-all duration-200 bg-card">
+      <h3 className="text-lg font-semibold text-card-foreground">{category.name}</h3>
+      <p className="text-sm text-muted-foreground mt-1">{category.description}</p>
       <div className="flex justify-end mt-4">
         <DropdownMenu>
-          <DropdownMenuTrigger>
-            <MoreVertical className="h-4 w-4 cursor-pointer" />
+          <DropdownMenuTrigger className="hover:bg-accent hover:text-accent-foreground p-2 rounded-lg transition-colors">
+            <MoreVertical className="h-4 w-4" />
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => setIsEditModalOpen(true)}>
+          <DropdownMenuContent align="end" className="rounded-xl">
+            <DropdownMenuItem onClick={() => setIsEditModalOpen(true)} className="rounded-lg">
               <Edit className="mr-2 h-4 w-4" />
               Edit Category
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => onDelete?.(category.id)} className="text-red-600 focus:text-red-600">
+            <DropdownMenuItem onClick={() => onDelete?.(category.id)} className="text-destructive focus:text-destructive rounded-lg">
               <Trash2 className="mr-2 h-4 w-4" />
               Delete Category
             </DropdownMenuItem>
