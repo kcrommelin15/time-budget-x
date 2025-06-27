@@ -256,13 +256,23 @@ export default function EnhancedBottomTrackingWidget({
     <div
       className={`fixed bottom-0 left-1/2 transform -translate-x-1/2 z-40 ${
         isDesktop ? "max-w-4xl w-full" : "max-w-md w-full"
-      } bg-white/95 backdrop-blur-xl rounded-t-3xl shadow-2xl border-t border-gray-200`}
+      } glass-effect rounded-t-2xl smooth-shadow-lg border border-border/20`}
     >
-      <div className="p-6 space-y-4">
-        {/* Enhanced Category Chips - maintain consistent height */}
-        <div className="min-h-[60px] flex items-start justify-center">
+      <div className="p-6 space-y-6">
+        {/* Text Input */}
+        <div className="relative">
+          <Input
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="What are you working on?"
+            className="w-full h-12 rounded-xl text-center font-medium placeholder:text-muted-foreground/70 border-border/20 bg-background/80 focus:bg-background transition-all duration-200"
+          />
+        </div>
+
+        {/* Enhanced Category Chips */}
+        <div className="min-h-[40px] flex items-center justify-center">
           {shouldShowCategories && (
-            <div className="flex flex-wrap gap-3">
+            <div className="flex flex-wrap gap-2 justify-center">
               {categoryChips.map((category) => {
                 const IconComponent = category.icon
                 return (
@@ -270,10 +280,10 @@ export default function EnhancedBottomTrackingWidget({
                     key={category.id}
                     variant={selectedCategory === category.id ? "default" : "outline"}
                     onClick={() => setSelectedCategory(selectedCategory === category.id ? "" : category.id)}
-                    className={`rounded-2xl px-4 py-3 h-12 transition-all duration-200 ${
+                    className={`rounded-full px-4 py-2 h-10 transition-all duration-300 font-medium text-sm ${
                       selectedCategory === category.id
-                        ? "text-white shadow-lg scale-105"
-                        : "border-gray-200 bg-gray-50 hover:bg-white hover:scale-102"
+                        ? "text-white smooth-shadow-lg scale-105 border-0"
+                        : "border border-border bg-secondary hover:bg-accent hover:scale-105"
                     }`}
                     style={
                       selectedCategory === category.id
@@ -281,8 +291,8 @@ export default function EnhancedBottomTrackingWidget({
                         : { borderColor: `${category.color}40`, color: category.color }
                     }
                   >
-                    <IconComponent className="w-5 h-5 mr-2" />
-                    <span className="font-medium">{category.name}</span>
+                    <IconComponent className="w-4 h-4 mr-1.5" />
+                    <span>{category.name}</span>
                   </Button>
                 )
               })}
@@ -294,21 +304,11 @@ export default function EnhancedBottomTrackingWidget({
         <Button
           onClick={startTracking}
           disabled={!selectedCategory && !description}
-          className="w-full h-16 rounded-2xl bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white text-lg font-semibold shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full h-14 rounded-xl bg-primary text-primary-foreground text-lg font-semibold smooth-shadow hover:smooth-shadow-lg transition-all duration-300 hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
         >
-          <Play className="w-6 h-6 mr-3" />
-          Start
+          <Play className="w-5 h-5 mr-2" />
+          Start tracking
         </Button>
-
-        {/* Text Input - moved to bottom */}
-        <div className="relative">
-          <Input
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder="Where is your time going right now?"
-            className="w-full h-14 rounded-2xl text-center text-lg border-gray-200 bg-gray-50 focus:border-blue-400 shadow-sm placeholder:text-gray-400"
-          />
-        </div>
       </div>
     </div>
   )
