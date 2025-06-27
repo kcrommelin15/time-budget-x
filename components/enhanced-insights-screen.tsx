@@ -5,7 +5,6 @@ import { BarChart3, TrendingUp, Clock, Target, Award, Zap } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 export default function EnhancedInsightsScreen() {
-  const [selectedPeriod, setSelectedPeriod] = useState("week")
 
   // Mock data for insights
   const weeklyData = {
@@ -36,30 +35,11 @@ export default function EnhancedInsightsScreen() {
   return (
     <div className="p-6 pb-20">
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent">
-            Insights
-          </h1>
-          <p className="text-gray-600 mt-2">Your time is valuable. Let&apos;s make it count.</p>
-        </div>
-
-        {/* Period Selector */}
-        <div className="flex bg-white rounded-2xl p-1 shadow-lg border border-gray-200">
-          {["week", "month", "year"].map((period) => (
-            <Button
-              key={period}
-              variant={selectedPeriod === period ? "default" : "ghost"}
-              size="sm"
-              onClick={() => setSelectedPeriod(period)}
-              className={`rounded-xl capitalize ${
-                selectedPeriod === period ? "bg-gradient-to-r from-blue-500 to-purple-600 text-white" : ""
-              }`}
-            >
-              {period}
-            </Button>
-          ))}
-        </div>
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent">
+          Insights
+        </h1>
+        <p className="text-gray-600 mt-2">Your time is valuable. Let&apos;s make it count.</p>
       </div>
 
       {/* Key Metrics */}
