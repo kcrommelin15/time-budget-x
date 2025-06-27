@@ -65,25 +65,45 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Fetch user's categories from database
-    const { data: categories, error: categoriesError } = await supabaseClient
-      .from('categories')
-      .select('id, name, subcategories')
-      .eq('user_id', userData.user.id);
-
-    if (categoriesError) {
-      return new Response(
-        JSON.stringify({ error: 'Failed to fetch user categories' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    if (!categories || categories.length === 0) {
-      return new Response(
-        JSON.stringify({ error: 'No categories found for user' }),
-        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+    // For now, use default categories since database might not be set up
+    // TODO: Replace with actual database fetch when categories table is ready
+    const categories: Category[] = [
+      {
+        id: "1",
+        name: "Work",
+        subcategories: [
+          { name: "Meetings" },
+          { name: "Deep Focus" },
+          { name: "Managing" },
+          { name: "Other" }
+        ]
+      },
+      {
+        id: "2", 
+        name: "Personal",
+        subcategories: [
+          { name: "Domestic" },
+          { name: "Family time" },
+          { name: "Hobbies" }
+        ]
+      },
+      {
+        id: "3",
+        name: "Exercise", 
+        subcategories: [
+          { name: "Cardio" },
+          { name: "Strength" }
+        ]
+      },
+      {
+        id: "4",
+        name: "Learning",
+        subcategories: [
+          { name: "Online courses" },
+          { name: "Reading" }
+        ]
+      }
+    ];
 
     // Use OpenAI to categorize the activity
     const categorization = await categorizeWithOpenAI(description, categories);

@@ -59,6 +59,8 @@ export default function EnhancedBottomTrackingWidget({
 
   const performAutoCategorization = async (desc: string) => {
     setIsCategorizingLoading(true)
+    console.log('Starting auto-categorization for:', desc)
+    
     try {
       const { data: { session } } = await supabase.auth.getSession()
       
@@ -67,6 +69,7 @@ export default function EnhancedBottomTrackingWidget({
         return
       }
 
+      console.log('Making request to categorize-activity API...')
       const response = await fetch('/api/supabase/functions/categorize-activity', {
         method: 'POST',
         headers: {
@@ -79,14 +82,18 @@ export default function EnhancedBottomTrackingWidget({
         }),
       })
 
+      console.log('Response status:', response.status)
+      
       if (response.ok) {
         const result: CategorizationResult = await response.json()
+        console.log('Categorization result:', result)
         setAutoCategorization(result)
         
         // Always auto-select the highest confidence category
         setSelectedCategory(result.categoryId)
       } else {
-        console.error('Auto-categorization failed:', response.statusText)
+        const errorText = await response.text()
+        console.error('Auto-categorization failed:', response.status, errorText)
       }
     } catch (error) {
       console.error('Auto-categorization failed:', error)
@@ -207,19 +214,14 @@ export default function EnhancedBottomTrackingWidget({
       <div
         className={`fixed bottom-0 left-1/2 transform -translate-x-1/2 z-40 ${
           isDesktop ? "max-w-4xl w-full" : "max-w-md w-full"
-        } ${canSave ? 'bg-green-100/80' : 'bg-yellow-100/80'} backdrop-blur-xl border ${canSave ? 'border-green-200/50' : 'border-yellow-200/50'} rounded-t-3xl p-6 shadow-2xl`}
+        } bg-green-100/80 backdrop-blur-xl border border-green-200/50 rounded-t-3xl p-6 shadow-2xl`}
       >
         <div className="text-center mb-4">
           <div className="flex items-center justify-center gap-2 mb-2">
-            <div className={`w-3 h-3 rounded-full animate-pulse shadow-lg ${canSave ? 'bg-green-500' : 'bg-yellow-500'}`}></div>
-            <span className={`text-sm font-medium ${canSave ? 'text-green-700' : 'text-yellow-700'}`}>
-              {isPaused ? "Paused" : canSave ? "Tracking" : "Starting..."}
+            <div className="w-3 h-3 rounded-full animate-pulse shadow-lg bg-green-500"></div>
+            <span className="text-sm font-medium text-green-700">
+              {isPaused ? "Paused" : "Tracking"}
             </span>
-            {!canSave && (
-              <span className="text-xs text-yellow-600">
-                (10s minimum)
-              </span>
-            )}
           </div>
 
           {selectedCat && (
@@ -249,8 +251,7 @@ export default function EnhancedBottomTrackingWidget({
 
           <Button
             onClick={stopTracking}
-            className={`flex-1 rounded-2xl h-12 ${canSave ? 'bg-red-500/90 hover:bg-red-600/90' : 'bg-gray-400/90 cursor-not-allowed'} backdrop-blur-sm shadow-lg`}
-            disabled={!canSave}
+            className="flex-1 rounded-2xl h-12 bg-red-500/90 hover:bg-red-600/90 backdrop-blur-sm shadow-lg"
           >
             <Square className="w-4 h-4 mr-2" />
             Stop

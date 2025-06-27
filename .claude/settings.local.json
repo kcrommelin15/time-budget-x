@@ -12,7 +12,8 @@
       "mcp__supabase__list_edge_functions",
       "Bash(ls:*)",
       "Bash(mkdir:*)",
-      "Bash(git reset:*)"
+      "Bash(git reset:*)",
+      "mcp__vercel__vercel-list-projects"
     ]
   },
   "enableAllProjectMcpServers": true,
