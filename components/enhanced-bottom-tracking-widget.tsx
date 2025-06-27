@@ -256,21 +256,21 @@ export default function EnhancedBottomTrackingWidget({
     <div
       className={`fixed bottom-0 left-1/2 transform -translate-x-1/2 z-40 ${
         isDesktop ? "max-w-4xl w-full" : "max-w-md w-full"
-      } glass-effect rounded-t-2xl smooth-shadow-lg border border-border/20`}
+      } bg-white border-t border-gray-200 shadow-lg`}
     >
-      <div className="p-6 space-y-6">
+      <div className="p-4 space-y-3">
         {/* Text Input */}
         <div className="relative">
           <Input
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             placeholder="What are you working on?"
-            className="w-full h-12 rounded-xl text-center font-medium placeholder:text-muted-foreground/70 border-border/20 bg-background/80 focus:bg-background transition-all duration-200"
+            className="w-full h-10 rounded-lg text-center text-sm placeholder:text-gray-400 border-gray-300 bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all duration-200"
           />
         </div>
 
         {/* Enhanced Category Chips */}
-        <div className="min-h-[40px] flex items-center justify-center">
+        <div className="min-h-[32px] flex items-center justify-center">
           {shouldShowCategories && (
             <div className="flex flex-wrap gap-2 justify-center">
               {categoryChips.map((category) => {
@@ -280,18 +280,18 @@ export default function EnhancedBottomTrackingWidget({
                     key={category.id}
                     variant={selectedCategory === category.id ? "default" : "outline"}
                     onClick={() => setSelectedCategory(selectedCategory === category.id ? "" : category.id)}
-                    className={`rounded-full px-4 py-2 h-10 transition-all duration-300 font-medium text-sm ${
+                    className={`rounded-full px-3 py-1 h-8 transition-all duration-200 font-medium text-xs ${
                       selectedCategory === category.id
-                        ? "text-white smooth-shadow-lg scale-105 border-0"
-                        : "border border-border bg-secondary hover:bg-accent hover:scale-105"
+                        ? "text-white shadow-sm"
+                        : "border border-gray-300 bg-white hover:bg-gray-50 text-gray-700"
                     }`}
                     style={
                       selectedCategory === category.id
                         ? { backgroundColor: category.color }
-                        : { borderColor: `${category.color}40`, color: category.color }
+                        : {}
                     }
                   >
-                    <IconComponent className="w-4 h-4 mr-1.5" />
+                    <IconComponent className="w-3 h-3 mr-1" />
                     <span>{category.name}</span>
                   </Button>
                 )
@@ -304,9 +304,9 @@ export default function EnhancedBottomTrackingWidget({
         <Button
           onClick={startTracking}
           disabled={!selectedCategory && !description}
-          className="w-full h-14 rounded-xl bg-primary text-primary-foreground text-lg font-semibold smooth-shadow hover:smooth-shadow-lg transition-all duration-300 hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+          className="w-full h-11 rounded-xl bg-blue-500 hover:bg-blue-600 text-white text-sm font-semibold shadow-sm transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          <Play className="w-5 h-5 mr-2" />
+          <Play className="w-4 h-4 mr-2" />
           Start tracking
         </Button>
       </div>

@@ -106,7 +106,7 @@ export default function TimelineScreen({ isDesktop = false, user }: TimelineScre
   const TIMELINE_START_HOUR = 6 // 6 AM
   const TIMELINE_END_HOUR = 23 // 11 PM
   const TIMELINE_HOURS = TIMELINE_END_HOUR - TIMELINE_START_HOUR + 1 // 18 hours
-  const HOUR_HEIGHT = 80 // pixels per hour
+  const HOUR_HEIGHT = 60 // pixels per hour - reduced for tighter spacing
   const TIMELINE_HEIGHT = TIMELINE_HOURS * HOUR_HEIGHT
 
   // Convert time string to minutes since timeline start
@@ -213,14 +213,14 @@ export default function TimelineScreen({ isDesktop = false, user }: TimelineScre
   return (
     <>
       {/* Sticky Header */}
-      <div className="sticky top-0 z-30 glass-effect border-b border-border/20">
-        <div className="p-6 pb-4">
-          <div className="flex items-center justify-between mb-6">
+      <div className="sticky top-0 z-30 bg-gray-50 border-b border-gray-200">
+        <div className="p-4">
+          <div className="flex items-center justify-between mb-3">
             <div>
-              <h1 className="text-2xl font-bold text-foreground mb-1">{formatDate(selectedDate)}</h1>
+              <h1 className="text-lg font-semibold text-gray-900 mb-1">{formatDate(selectedDate)}</h1>
               <div className="flex items-center gap-2">
-                <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                  <div className="w-2 h-2 rounded-full bg-muted-foreground/40"></div>
+                <div className="flex items-center gap-1 text-xs text-gray-500">
+                  <div className="w-1.5 h-1.5 rounded-full bg-gray-400"></div>
                   <span>Tracking is not active</span>
                 </div>
               </div>
@@ -228,15 +228,15 @@ export default function TimelineScreen({ isDesktop = false, user }: TimelineScre
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setIsPreferencesOpen(true)}
-                className="flex items-center justify-center w-10 h-10 bg-secondary border border-border rounded-xl hover:bg-accent transition-all duration-200 hover:scale-105"
+                className="flex items-center justify-center w-8 h-8 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-all duration-200"
               >
                 <Calendar className="w-4 h-4" />
               </button>
               <button
                 onClick={() => setIsAddModalOpen(true)}
-                className="flex items-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground rounded-xl font-medium hover:bg-primary/90 transition-all duration-200 hover:scale-105 smooth-shadow"
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-800 transition-all duration-200"
               >
-                <Plus className="w-4 h-4" />
+                <Plus className="w-3 h-3" />
                 <span>Add</span>
               </button>
             </div>
@@ -245,8 +245,8 @@ export default function TimelineScreen({ isDesktop = false, user }: TimelineScre
       </div>
 
       {/* Scrollable Timeline */}
-      <div ref={timelineRef} className="overflow-y-auto overflow-x-hidden" style={{ height: timelineContainerHeight }}>
-        <div className="p-6 pt-2">
+      <div ref={timelineRef} className="overflow-y-auto overflow-x-hidden bg-white" style={{ height: timelineContainerHeight }}>
+        <div className="px-4 py-2">
           {timeEntriesError && (
             <div className="fixed top-16 left-1/2 transform -translate-x-1/2 bg-red-100 border border-red-400 text-red-700 px-4 py-2 rounded z-50">
               {timeEntriesError}
@@ -256,20 +256,20 @@ export default function TimelineScreen({ isDesktop = false, user }: TimelineScre
           {/* Timeline Container */}
           <div className="flex">
             {/* Time Labels */}
-            <div className="w-16 flex-shrink-0">
+            <div className="w-14 flex-shrink-0 pr-2">
               {hourMarkers.map((marker) => (
                 <div
                   key={marker.hour}
-                  className="relative text-xs font-medium text-muted-foreground"
+                  className="relative text-xs text-gray-400"
                   style={{ height: `${HOUR_HEIGHT}px` }}
                 >
-                  <div className="absolute -top-2">{marker.displayHour}</div>
+                  <div className="absolute -top-2 right-0 text-right">{marker.displayHour}</div>
                 </div>
               ))}
             </div>
 
             {/* Timeline Grid and Events */}
-            <div className="flex-1 ml-4 relative">
+            <div className="flex-1 ml-1 relative">
               {/* Background Grid */}
               <div
                 className="relative cursor-pointer"
@@ -280,25 +280,17 @@ export default function TimelineScreen({ isDesktop = false, user }: TimelineScre
                 {hourMarkers.map((marker) => (
                   <div
                     key={marker.hour}
-                    className="absolute w-full border-t border-border/30"
+                    className="absolute w-full border-t border-gray-100"
                     style={{ top: `${marker.position}px` }}
                   />
                 ))}
 
-                {/* 15-minute Grid Lines for better precision */}
+                {/* 30-minute Grid Lines for better precision */}
                 {hourMarkers.slice(0, -1).map((marker) => (
-                  <div key={`${marker.hour}-quarters`}>
+                  <div key={`${marker.hour}-half`}>
                     <div
-                      className="absolute w-full border-t border-border/10"
-                      style={{ top: `${marker.position + HOUR_HEIGHT / 4}px` }}
-                    />
-                    <div
-                      className="absolute w-full border-t border-border/20"
+                      className="absolute w-full border-t border-gray-50"
                       style={{ top: `${marker.position + HOUR_HEIGHT / 2}px` }}
-                    />
-                    <div
-                      className="absolute w-full border-t border-border/10"
-                      style={{ top: `${marker.position + (3 * HOUR_HEIGHT) / 4}px` }}
                     />
                   </div>
                 ))}
@@ -316,9 +308,9 @@ export default function TimelineScreen({ isDesktop = false, user }: TimelineScre
 
                       return (
                         <div className="absolute w-full z-20 flex items-center" style={{ top: `${currentPosition}px` }}>
-                          <div className="w-3 h-3 bg-destructive rounded-full border-2 border-background shadow-lg -ml-1.5"></div>
-                          <div className="flex-1 h-0.5 bg-destructive"></div>
-                          <div className="bg-destructive text-destructive-foreground text-xs px-2 py-1 rounded-lg font-medium ml-2">
+                          <div className="w-2 h-2 bg-red-500 rounded-full border border-white shadow-sm -ml-1"></div>
+                          <div className="flex-1 h-px bg-red-500"></div>
+                          <div className="bg-red-500 text-white text-xs px-1.5 py-0.5 rounded font-medium ml-1">
                             {now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                           </div>
                         </div>
@@ -334,7 +326,7 @@ export default function TimelineScreen({ isDesktop = false, user }: TimelineScre
                   const durationMinutes = endMinutes - startMinutes
 
                   return (
-                    <div key={entry.id} style={getEntryStyle(entry)} className="px-2">
+                    <div key={entry.id} style={getEntryStyle(entry)} className="px-1">
                       <ZoomableTimeBlock
                         entry={entry}
                         onEdit={handleEditTimeEntry}
