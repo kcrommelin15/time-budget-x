@@ -3,11 +3,10 @@
 import type React from "react"
 
 import { useState, useRef } from "react"
-import { Calendar, Plus, ChevronDown } from "lucide-react"
+import { Calendar, Plus } from "lucide-react"
 import AddTimeEntryModal from "@/components/add-time-entry-modal"
 import EditTimeEntryModal from "@/components/edit-time-entry-modal"
 import TrackingPreferencesModal from "@/components/tracking-preferences-modal"
-import SimpleDatePickerModal from "@/components/simple-date-picker-modal"
 import type { TimeEntry } from "@/lib/types"
 import EnhancedBottomTrackingWidget from "@/components/enhanced-bottom-tracking-widget"
 import ZoomableTimeBlock from "@/components/zoomable-time-block"
@@ -41,7 +40,6 @@ export default function TimelineScreen({ isDesktop = false, user }: TimelineScre
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [editingEntry, setEditingEntry] = useState<TimeEntry | null>(null)
   const [isPreferencesOpen, setIsPreferencesOpen] = useState(false)
-  const [isDatePickerOpen, setIsDatePickerOpen] = useState(false)
   const [prefilledEntry, setPrefilledEntry] = useState<{ startTime: string; endTime: string } | null>(null)
 
   const timelineRef = useRef<HTMLDivElement>(null)
@@ -54,9 +52,6 @@ export default function TimelineScreen({ isDesktop = false, user }: TimelineScre
     })
   }
 
-  const handleDateSelect = (date: Date) => {
-    setSelectedDate(date)
-  }
 
   const handleAddTimeEntry = async (newEntry: Omit<TimeEntry, "id">) => {
     try {
@@ -224,12 +219,6 @@ export default function TimelineScreen({ isDesktop = false, user }: TimelineScre
         <div className="p-6 pb-4">
           <div className="flex items-center gap-3 mb-4">
             <h1 className="text-3xl font-bold text-gray-900">{formatDate(selectedDate)}</h1>
-            <button
-              onClick={() => setIsDatePickerOpen(true)}
-              className="flex items-center justify-center w-8 h-8 bg-white border border-gray-300 rounded-full shadow-sm hover:bg-gray-50"
-            >
-              <ChevronDown className="w-4 h-4" />
-            </button>
             <button
               onClick={() => setIsPreferencesOpen(true)}
               className="flex items-center justify-center w-8 h-8 bg-white border border-gray-300 rounded-full shadow-sm hover:bg-gray-50"
@@ -410,12 +399,6 @@ export default function TimelineScreen({ isDesktop = false, user }: TimelineScre
 
       <TrackingPreferencesModal isOpen={isPreferencesOpen} onClose={() => setIsPreferencesOpen(false)} />
 
-      <SimpleDatePickerModal
-        isOpen={isDatePickerOpen}
-        onClose={() => setIsDatePickerOpen(false)}
-        selectedDate={selectedDate}
-        onDateSelect={handleDateSelect}
-      />
 
       {/* Sticky Footer - Activity Tracking Widget */}
       <div className="sticky bottom-0 z-30">

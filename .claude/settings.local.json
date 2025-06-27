@@ -39,7 +39,15 @@
       "WebFetch(domain:vercel.com)",
       "Bash(VERCEL_API_TOKEN=culGA0PoSJeo7GclUbzPlp7h mcp-vercel --help)",
       "Bash(git clone:*)",
-      "Bash(VERCEL_API_TOKEN=culGA0PoSJeo7GclUbzPlp7h npm start)"
+      "Bash(VERCEL_API_TOKEN=culGA0PoSJeo7GclUbzPlp7h npm start)",
+      "mcp__vercel__vercel-create-deployment",
+      "mcp__vercel__vercel-list-projects",
+      "Bash(git push:*)",
+      "mcp__vercel__vercel-list-all-deployments",
+      "mcp__vercel__vercel-get-deployment",
+      "Bash(pnpm install:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
     ],
     "deny": []
   },
