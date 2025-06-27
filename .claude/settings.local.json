@@ -1,4 +1,14 @@
 {
+  "permissions": {
+    "allow": [
+      "Bash(git cherry-pick:*)",
+      "Bash(rm:*)"
+    ]
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "supabase"
+  ],
   "bash": {
     "ask": [
       "Bash(rm:*)",
@@ -79,9 +89,5 @@
       "Bash(git push:*)"
     ],
     "deny": []
-  },
-  "enableAllProjectMcpServers": true,
-  "enabledMcpjsonServers": [
-    "supabase"
-  ]
+  }
 }
