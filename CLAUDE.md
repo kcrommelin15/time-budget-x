@@ -51,3 +51,64 @@ This is a Next.js 14 time budget tracking application with the following key arc
 - Goal tracking supports "more_is_better" vs "less_is_better" directions
 - Weekly budget allocation with remaining hours calculations
 - Subcategories support both flexible and fixed budget allocations
+
+## Supabase MCP Integration
+
+This project has Supabase MCP (Model Context Protocol) configured to allow Claude Code direct access to the Supabase database for schema management, queries, and backend operations.
+
+### Configuration Status
+✅ **MCP Server Configured** - Write mode enabled
+- **Project Reference**: `jxvvedmbnnhmnuujjxvc`
+- **Mode**: Write-enabled (full database access)
+- **Authentication**: Personal Access Token (configured securely)
+
+### Available MCP Tools
+The following tools are now available:
+- **Database Schema**: View and modify table structures, relationships, and constraints
+- **Query Execution**: Run SQL queries directly against the database
+- **Data Management**: Insert, update, and delete records through SQL operations
+- **RLS Policies**: Manage Row Level Security policies
+- **Functions & Triggers**: View and manage database functions and triggers
+
+### How to Use MCP Tools
+1. MCP tools appear with `mcp__` prefix (e.g., `mcp__supabase__execute_sql`)
+2. Use these tools for database operations instead of manual SQL files
+3. All operations sync automatically with Supabase dashboard
+
+### Configuration Details
+```json
+{
+  "command": "npx",
+  "args": ["-y", "@supabase/mcp-server-supabase@latest", "--project-ref=jxvvedmbnnhmnuujjxvc"],
+  "env": {"SUPABASE_ACCESS_TOKEN": "[configured]"}
+}
+```
+
+### Usage Guidelines
+- **Full Database Access**: Write mode enabled for schema changes and data modifications
+- **Direct Database Operations**: Use MCP tools for database changes instead of manual SQL files
+- **Real-time Sync**: Database changes via MCP automatically sync with your Supabase dashboard
+- **Feature Development**: Perfect for adding new features that require database schema changes
+
+## Vercel MCP Integration
+
+This project also has Vercel MCP configured for deployment and project management operations.
+
+### Configuration Status
+✅ **Vercel MCP Server Configured** - Full API access enabled
+- **Authentication**: Personal API Token (configured securely)
+- **Repository**: Local clone of `nganiet/mcp-vercel`
+- **Build Status**: Compiled and ready
+
+### Available Vercel MCP Tools
+The following tools are available with `mcp__vercel__` prefix:
+- **Project Management**: Create, list, and manage Vercel projects
+- **Deployment Operations**: Deploy, list, and manage deployments
+- **Environment Variables**: Manage environment variables across projects
+- **Team Management**: Handle team operations and permissions
+
+### Usage Guidelines
+- **Deployment Automation**: Use MCP tools for automated deployments
+- **Project Configuration**: Manage project settings through MCP interface
+- **Environment Management**: Securely handle environment variables
+- **Team Collaboration**: Manage team access and permissions

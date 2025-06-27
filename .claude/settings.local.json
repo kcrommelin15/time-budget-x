@@ -15,8 +15,36 @@
       "Bash(done)",
       "WebFetch(domain:docs.anthropic.com)",
       "Bash(npm install:*)",
-      "Bash(claude mcp add:*)"
+      "Bash(claude mcp add:*)",
+      "WebFetch(domain:github.com)",
+      "Bash(npx:*)",
+      "Bash(SUPABASE_ACCESS_TOKEN=\"sb_secret_xv7aYQuzvQR-I0lGChBGYA_DABzWYco\" npx -y @supabase/mcp-server-supabase@latest --project-ref=jxvvedmbnnhmnuujjxvc)",
+      "Bash(claude mcp:*)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(export SUPABASE_ACCESS_TOKEN=\"sb_secret_xv7aYQuzvQR-I0lGChBGYA_DABzWYco\")",
+      "mcp__supabase__execute_sql",
+      "mcp__supabase__list_tables",
+      "Bash(supabase auth users create:*)",
+      "Bash(supabase:*)",
+      "Bash(node:*)",
+      "mcp__supabase__get_project_url",
+      "mcp__supabase__get_anon_key",
+      "Bash(env)",
+      "Bash(export SUPABASE_ACCESS_TOKEN=\"sbp_2c4e6b1473e6f25b5a3d7e9c8f0a1234567890abcdef\")",
+      "Bash(SUPABASE_ACCESS_TOKEN=\"sb_secret_xv7aYQuzvQR-I0lGChBGYA_DABzWYco\" supabase auth users create test@example.com --project-ref jxvvedmbnnhmnuujjxvc)",
+      "Bash(open:*)",
+      "Bash(mkdir:*)",
+      "Bash(touch:*)",
+      "Bash(SUPABASE_ACCESS_TOKEN=\"sb_secret_xv7aYQuzvQR-I0lGChBGYA_DABzWYco\" npx -y @supabase/mcp-server-supabase@latest --project-ref=jxvvedmbnnhmnuujjxvc list-tables)",
+      "WebFetch(domain:vercel.com)",
+      "Bash(VERCEL_API_TOKEN=culGA0PoSJeo7GclUbzPlp7h mcp-vercel --help)",
+      "Bash(git clone:*)",
+      "Bash(VERCEL_API_TOKEN=culGA0PoSJeo7GclUbzPlp7h npm start)"
     ],
     "deny": []
-  }
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "supabase"
+  ]
 }
