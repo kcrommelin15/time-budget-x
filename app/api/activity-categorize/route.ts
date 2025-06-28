@@ -91,27 +91,40 @@ export async function POST(request: NextRequest) {
     const n8nResult = await n8nResponse.json()
     console.log('✅ n8n result:', JSON.stringify(n8nResult, null, 2))
     
-    // Expected n8n response format:
-    // {
-    //   "id": "entry-uuid",
-    //   "user_id": "user-uuid", 
-    //   "activity_description": "Working on quarterly report",
-    //   "category": "Work",
-    //   "sub_category": "Reports", 
-    //   "confidence_score": 0.85,
-    //   "timestamp": "2025-06-28T10:30:00Z"
-    // }
+    // Check if n8n returned the expected AI categorization format
+    if (n8nResult.category && n8nResult.confidence_score !== undefined) {
+      // Expected n8n response format:
+      // {
+      //   "id": "entry-uuid",
+      //   "user_id": "user-uuid", 
+      //   "activity_description": "Working on quarterly report",
+      //   "category": "Work",
+      //   "sub_category": "Reports", 
+      //   "confidence_score": 0.85,
+      //   "timestamp": "2025-06-28T10:30:00Z"
+      // }
 
-    return NextResponse.json({
-      success: true,
-      categorization: {
-        category: n8nResult.category,
-        sub_category: n8nResult.sub_category,
-        confidence_score: n8nResult.confidence_score,
-        activity_description: activity_description
-      },
-      entry_id: n8nResult.id
-    })
+      return NextResponse.json({
+        success: true,
+        categorization: {
+          category: n8nResult.category,
+          sub_category: n8nResult.sub_category,
+          confidence_score: n8nResult.confidence_score,
+          activity_description: activity_description
+        },
+        entry_id: n8nResult.id
+      })
+    } else {
+      // n8n workflow is not configured properly yet
+      console.error('❌ n8n workflow not configured - received:', n8nResult)
+      return NextResponse.json({
+        error: 'n8n workflow not configured properly',
+        debug: {
+          received: n8nResult,
+          expected: 'Should return {category, sub_category, confidence_score, id}'
+        }
+      }, { status: 500 })
+    }
 
   } catch (error) {
     console.error('Activity categorization error:', error)
