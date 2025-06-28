@@ -7,6 +7,8 @@ interface CategorizationResult {
 
 export class AICategorization {
   static async categorizeActivity(activityDescription: string): Promise<CategorizationResult | null> {
+    console.log('🚀 Frontend: Calling AI categorization for:', activityDescription)
+    
     try {
       const response = await fetch('/api/activity-categorize', {
         method: 'POST',
@@ -18,13 +20,16 @@ export class AICategorization {
         })
       })
 
+      console.log('📥 Frontend: API response status:', response.status)
+
       if (!response.ok) {
         const error = await response.json()
-        console.error('AI categorization failed:', error)
+        console.error('❌ Frontend: AI categorization failed:', error)
         return null
       }
 
       const result = await response.json()
+      console.log('✅ Frontend: AI categorization result:', result)
       
       if (result.success && result.categorization) {
         return {
@@ -35,9 +40,10 @@ export class AICategorization {
         }
       }
 
+      console.warn('⚠️ Frontend: Unexpected result format:', result)
       return null
     } catch (error) {
-      console.error('Error calling AI categorization:', error)
+      console.error('❌ Frontend: Error calling AI categorization:', error)
       return null
     }
   }

@@ -3,10 +3,14 @@ import { createClient } from '@/lib/supabase/server'
 import { cookies } from 'next/headers'
 
 export async function POST(request: NextRequest) {
+  console.log('🚀 Activity categorization API called')
+  
   try {
     const { activity_description } = await request.json()
+    console.log('📝 Activity description:', activity_description)
     
     if (!activity_description) {
+      console.error('❌ No activity description provided')
       return NextResponse.json(
         { error: 'Activity description is required' },
         { status: 400 }
@@ -52,12 +56,17 @@ export async function POST(request: NextRequest) {
 
     // Call n8n webhook
     const n8nWebhookUrl = process.env.N8N_WEBHOOK_URL
+    console.log('🌐 n8n webhook URL:', n8nWebhookUrl ? 'Set' : 'NOT SET')
+    
     if (!n8nWebhookUrl) {
+      console.error('❌ N8N webhook URL not configured')
       return NextResponse.json(
         { error: 'N8N webhook URL not configured' },
         { status: 500 }
       )
     }
+
+    console.log('📤 Sending to n8n:', JSON.stringify(n8nPayload, null, 2))
 
     const n8nResponse = await fetch(n8nWebhookUrl, {
       method: 'POST',
@@ -67,15 +76,19 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify(n8nPayload)
     })
 
+    console.log('📥 n8n response status:', n8nResponse.status)
+
     if (!n8nResponse.ok) {
-      console.error('N8N webhook failed:', await n8nResponse.text())
+      const errorText = await n8nResponse.text()
+      console.error('❌ N8N webhook failed:', errorText)
       return NextResponse.json(
-        { error: 'AI categorization failed' },
+        { error: 'AI categorization failed', details: errorText },
         { status: 500 }
       )
     }
 
     const n8nResult = await n8nResponse.json()
+    console.log('✅ n8n result:', JSON.stringify(n8nResult, null, 2))
     
     // Expected n8n response format:
     // {
