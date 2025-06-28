@@ -56,12 +56,13 @@ export async function POST(request: NextRequest) {
 
     // Call n8n webhook
     const n8nWebhookUrl = process.env.N8N_WEBHOOK_URL
-    console.log('🌐 n8n webhook URL:', n8nWebhookUrl ? 'Set' : 'NOT SET')
+    console.log('🌐 n8n webhook URL:', n8nWebhookUrl ? `Set: ${n8nWebhookUrl}` : 'NOT SET')
+    console.log('🌐 All env vars:', Object.keys(process.env).filter(key => key.includes('N8N')))
     
     if (!n8nWebhookUrl) {
       console.error('❌ N8N webhook URL not configured')
       return NextResponse.json(
-        { error: 'N8N webhook URL not configured' },
+        { error: 'N8N webhook URL not configured', debug: 'Environment variable N8N_WEBHOOK_URL is not set' },
         { status: 500 }
       )
     }
