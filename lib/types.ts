@@ -35,4 +35,7 @@ export interface TimeEntry {
   notes?: string
   source?: string // Where this was recorded (Slack, Trello, Manual, etc.)
   approved?: boolean
+  confidenceScore?: number // AI categorization confidence (0-1)
+  aiCategorized?: boolean // Whether this was categorized by AI
+  activityDescription?: string // Original user input before categorization
 }

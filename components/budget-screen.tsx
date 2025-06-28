@@ -9,6 +9,7 @@ import TrackingPreferencesModal from "@/components/tracking-preferences-modal"
 import ListStyleCategoryCard from "@/components/list-style-category-card"
 import ArchivedCategoriesSection from "@/components/archived-categories-section"
 import EnhancedAllocationBanner from "@/components/enhanced-allocation-banner"
+import AIActivityInput from "@/components/ai-activity-input"
 import { useCategoriesQuery } from "@/hooks/use-categories-query"
 import { useTrackingPreferences } from "@/hooks/use-tracking-preferences"
 import type { Category } from "@/lib/types"
@@ -180,6 +181,9 @@ export default function BudgetScreen({ isDesktop = false, user = null }: BudgetS
           totalScheduledHours={totalScheduledHours}
         />
       )}
+
+      {/* AI Activity Input */}
+      {user && <AIActivityInput />}
 
       {/* Categories */}
       <DragDropContext onDragEnd={handleDragEnd}>

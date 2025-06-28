@@ -39,6 +39,9 @@ export class TimeEntriesService {
       notes: entry.notes || undefined,
       source: entry.source || "manual",
       approved: entry.approved || true,
+      confidenceScore: entry.confidence_score || undefined,
+      aiCategorized: entry.ai_categorized || false,
+      activityDescription: entry.activity_description || undefined,
     }))
   }
 
@@ -85,6 +88,9 @@ export class TimeEntriesService {
         notes: entry.notes || null,
         source: entry.source || "manual",
         approved: entry.approved !== false,
+        confidence_score: entry.confidenceScore || null,
+        ai_categorized: entry.aiCategorized || false,
+        activity_description: entry.activityDescription || null,
       })
       .select()
       .single()
@@ -108,6 +114,9 @@ export class TimeEntriesService {
       notes: data.notes || undefined,
       source: data.source || "manual",
       approved: data.approved || true,
+      confidenceScore: data.confidence_score || undefined,
+      aiCategorized: data.ai_categorized || false,
+      activityDescription: data.activity_description || undefined,
     }
   }
 
