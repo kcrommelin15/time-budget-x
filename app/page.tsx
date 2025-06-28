@@ -132,9 +132,9 @@ export default function TimeBudgetApp() {
   // Show loading spinner while determining auth state
   if (user === undefined) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-black mx-auto mb-4"></div>
           <p className="text-gray-600">Loading...</p>
         </div>
       </div>
@@ -142,9 +142,7 @@ export default function TimeBudgetApp() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 relative">
-      {/* Subtle gradient overlay for extra glossiness */}
-      <div className="absolute inset-0 bg-gradient-to-tr from-blue-50/30 via-transparent to-purple-50/20 pointer-events-none"></div>
+    <div className="min-h-screen bg-gray-50 relative">
 
       {authError && (
         <div className="fixed top-4 left-1/2 transform -translate-x-1/2 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded z-50">
@@ -178,7 +176,7 @@ export default function TimeBudgetApp() {
         </div>
 
         {/* Mobile Layout */}
-        <div className="lg:hidden max-w-md mx-auto bg-white/60 backdrop-blur-xl min-h-screen relative rounded-t-3xl mt-4 shadow-2xl border border-white/40 overflow-hidden">
+        <div className="lg:hidden max-w-md mx-auto bg-white min-h-screen relative overflow-hidden">
           {activeScreen === "budget" && <BudgetScreen user={user} />}
           {activeScreen === "timeline" && <TimelineScreen user={user} />}
           {activeScreen === "insights" && <EnhancedInsightsScreen />}

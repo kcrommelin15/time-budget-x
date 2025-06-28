@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository Overview
 
-This is a Model Context Protocol (MCP) integration for Vercel's REST API. It implements tools for interacting with Vercel's APIs, enabling LLMs and other applications to programmatically manage Vercel deployments, projects, teams and environment variables.
+This is a Next.js time budget tracking application that helps users manage and track their time allocation across different categories and subcategories. The app uses Supabase for authentication and data persistence, with TanStack Query for client-side data management.
 
 ## Commands
 
@@ -12,88 +12,96 @@ This is a Model Context Protocol (MCP) integration for Vercel's REST API. It imp
 
 ```bash
 # Install dependencies
-npm install
+pnpm install
 
-# Run the MCP server in development mode
-npm run dev
+# Run the development server
+pnpm dev
 
 # Build the project
-npm run build
+pnpm build
 
 # Start the production server
-npm start
-```
+pnpm start
 
-### Docker Commands
-
-```bash
-# Build the Docker image
-docker build -t vercel-mcp .
-
-# Run in development mode with live reload
-docker build --target builder -t vercel-mcp-dev .
-docker run -it --rm \
-  -e VERCEL_API_TOKEN=your_token_here \
-  -p 3399:3399 \
-  -v $(pwd)/src:/app/src \
-  vercel-mcp-dev
-
-# Run in production mode
-docker run -it --rm \
-  -e VERCEL_API_TOKEN=your_token_here \
-  -p 3399:3399 \
-  vercel-mcp
+# Run linting
+pnpm lint
 ```
 
 ## Environment Variables
 
-- `VERCEL_API_TOKEN`: Required Vercel API token for authentication with Vercel API.
+Required environment variables for Supabase integration:
+- `NEXT_PUBLIC_SUPABASE_URL`: Supabase project URL
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`: Supabase anonymous key
 
 ## Architecture
 
-This project is built as a Model Context Protocol (MCP) server that implements a set of tools for interacting with the Vercel API. Key components include:
+The application follows a modern Next.js 14 App Router architecture with the following key components:
 
-1. **Server Initialization (`src/index.ts`)**:
+### Core Structure
 
-   - Entry point that creates an MCP server instance
-   - Registers tool handlers and configures error handling
+1. **App Router (`app/`)**:
+   - `page.tsx`: Main application entry point with screen navigation
+   - `layout.tsx`: Root layout with theme provider and query client
+   - `api/auth/`: Authentication API routes for Supabase
 
-2. **Tools Definition (`src/constants/tools.ts`)**:
+2. **Components (`components/`)**:
+   - Screen components: `budget-screen.tsx`, `timeline-screen.tsx`, `insights-screen.tsx`, `settings-screen.tsx`
+   - UI components organized in `ui/` subdirectory using Radix UI primitives
+   - Modal components for auth, category management, and time entry editing
 
-   - Defines the schemas and descriptions for all available tools
-   - Each tool has a defined name, description, and input schema
+3. **Data Layer (`lib/`)**:
+   - `supabase/`: Database services and client configuration
+     - `data-service.ts`: Category and subcategory CRUD operations
+     - `time-entries-service.ts`: Time entry management
+     - `user-settings-service.ts`: User preferences and settings
+   - `types.ts`: Core TypeScript interfaces for Category, Subcategory, TimeEntry
+   - `query-client.ts` & `query-keys.ts`: TanStack Query configuration
 
-3. **Tool Handlers (src/tools/<domain>/handlers.ts)**:
+4. **State Management (`hooks/`)**:
+   - Custom hooks for data fetching with TanStack Query
+   - `use-categories.ts`, `use-time-entries.ts`, `use-user-settings.ts`
 
-   - Implements the actual tool functionality
-   - Four main domains: deployments, environments, projects, and teams
-   - Each handler validates inputs, makes API calls, and formats responses
+### Data Model
 
-4. **API Utilities (`src/utils/api.ts` & `src/utils/config.ts`)**:
+The app manages three core entities:
+- **Categories**: Main time budget categories with weekly budgets and goal directions
+- **Subcategories**: Optional nested categories within main categories
+- **Time Entries**: Individual time tracking records linked to categories
 
-   - Handles authentication and API requests to Vercel
-   - Configures API endpoints and tokens
+### Key Features
 
-5. **Type Definitions (src/tools/<domain>/types.ts)**:
-   - TypeScript interfaces for Vercel API responses and parameters
-   - Ensures type safety throughout the application
+- Multi-screen navigation (Budget, Timeline, Insights, Settings)
+- Drag-and-drop category reordering
+- Real-time time tracking with start/stop functionality
+- Goal direction settings ("more is better" vs "less is better")
+- User authentication with email verification
+- Responsive design for desktop and mobile
 
-The application follows a modular architecture where:
+## Database Schema
 
-- Each Vercel API domain has its own directory with handlers, schemas, and types
-- The server routes tool calls to the appropriate handler based on the tool name
-- All handlers use a common API utility for making authenticated requests to Vercel
+The application uses Supabase with the following key tables:
+- `categories`: User's time budget categories
+- `subcategories`: Optional nested categories
+- `time_entries`: Individual time tracking records
+- User data is isolated by `user_id` from Supabase auth
 
-## Development Workflow
+## Authentication Flow
 
-1. Define a new tool in `src/constants/tools.ts`
-2. Create handler, schema, and types files in the appropriate domain directory
-3. Register the tool handler in `src/index.ts`
-4. Test the tool functionality with an MCP client
+- Uses Supabase Auth with email/password and magic link options
+- Email verification required for new accounts
+- Auth state managed in main app component with real-time listeners
+- Protected routes redirect to authentication modal when needed
 
-When adding a new tool, follow the pattern established in existing tools:
+## MCP Servers
 
-1. Create a schema definition using Zod
-2. Implement a handler function that validates inputs and calls the Vercel API
-3. Define types for request parameters and response data
-4. Register the tool in the `VERCEL_TOOLS` array and add the handler to the switch statement in index.ts
+### Figma Dev Mode MCP Rules
+- The Figma Dev Mode MCP Server provides an assets endpoint which can serve image and SVG assets
+- IMPORTANT: If the Figma Dev Mode MCP Server returns a localhost source for an image or an SVG, use that image or SVG source directly
+- IMPORTANT: DO NOT import/add new icon packages, all the assets should be in the Figma payload
+- IMPORTANT: do NOT use or create placeholders if a localhost source is provided
+- IMPORTANT: Always use components from `components/ui/` when possible
+- Prioritize Figma fidelity to match designs exactly
+- Avoid hardcoded values, use design tokens from Figma where available
+- Follow WCAG requirements for accessibility
+- Add component documentation
+- Place UI components in `components/ui/`; avoid inline styles unless truly necessary

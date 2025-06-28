@@ -9,7 +9,7 @@ import EditTimeEntryModal from "@/components/edit-time-entry-modal"
 import TrackingPreferencesModal from "@/components/tracking-preferences-modal"
 import type { TimeEntry } from "@/lib/types"
 import EnhancedBottomTrackingWidget from "@/components/enhanced-bottom-tracking-widget"
-import ZoomableTimeBlock from "@/components/zoomable-time-block"
+import FigmaTimeBlock from "@/components/figma-time-block"
 import { useTimeEntriesQuery } from "@/hooks/use-time-entries-query"
 import { useCategoriesQuery } from "@/hooks/use-categories-query"
 import type { User } from "@supabase/supabase-js"
@@ -213,32 +213,43 @@ export default function TimelineScreen({ isDesktop = false, user }: TimelineScre
   return (
     <>
       {/* Sticky Header */}
-      <div
-        className={`sticky top-0 z-30 bg-gradient-to-br from-gray-50 via-white to-gray-100 border-b border-gray-200/60 backdrop-blur-xl`}
-      >
-        <div className="p-6 pb-4">
-          <div className="flex items-center gap-3 mb-4">
-            <h1 className="text-3xl font-bold text-gray-900">{formatDate(selectedDate)}</h1>
-            <button
-              onClick={() => setIsPreferencesOpen(true)}
-              className="flex items-center justify-center w-8 h-8 bg-white border border-gray-300 rounded-full shadow-sm hover:bg-gray-50"
-            >
-              <Calendar className="w-4 h-4" />
-            </button>
-            <button
-              onClick={() => setIsAddModalOpen(true)}
-              className="flex items-center gap-2 px-3 py-2 bg-white border border-gray-300 rounded-full shadow-sm hover:bg-gray-50"
-            >
-              <Plus className="w-4 h-4" />
-              <span className="text-sm font-medium">Add</span>
-            </button>
+      <div className="sticky top-0 z-30 bg-white border-b border-gray-100">
+        <div className="px-6 py-4">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <h1 className="text-2xl font-semibold text-gray-900">{formatDate(selectedDate)}</h1>
+              <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </div>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setIsPreferencesOpen(true)}
+                className="flex items-center justify-center w-8 h-8 text-gray-600"
+              >
+                <Calendar className="w-5 h-5" />
+              </button>
+              <button
+                onClick={() => setIsAddModalOpen(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-black text-white rounded-full text-sm font-medium"
+              >
+                <Plus className="w-4 h-4" />
+                Add
+              </button>
+            </div>
+          </div>
+          
+          {/* Tracking Status */}
+          <div className="flex items-center gap-2 text-sm">
+            <span className="font-medium text-gray-900">OFF</span>
+            <span className="text-gray-500">Tracking is not active</span>
           </div>
         </div>
       </div>
 
       {/* Scrollable Timeline */}
-      <div ref={timelineRef} className="overflow-y-auto overflow-x-hidden" style={{ height: timelineContainerHeight }}>
-        <div className="p-6 pt-2">
+      <div ref={timelineRef} className="overflow-y-auto overflow-x-hidden bg-gray-50" style={{ height: timelineContainerHeight }}>
+        <div className="p-6 pt-4">
           {timeEntriesError && (
             <div className="fixed top-16 left-1/2 transform -translate-x-1/2 bg-red-100 border border-red-400 text-red-700 px-4 py-2 rounded z-50">
               {timeEntriesError}
@@ -327,12 +338,11 @@ export default function TimelineScreen({ isDesktop = false, user }: TimelineScre
 
                   return (
                     <div key={entry.id} style={getEntryStyle(entry)} className="px-2">
-                      <ZoomableTimeBlock
+                      <FigmaTimeBlock
                         entry={entry}
                         onEdit={handleEditTimeEntry}
                         onDelete={handleDeleteTimeEntry}
-                        zoomLevel={1}
-                        slotHeight={durationMinutes} // Pass actual duration in minutes
+                        slotHeight={durationMinutes}
                       />
                     </div>
                   )
