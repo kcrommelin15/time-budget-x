@@ -30,16 +30,19 @@ export async function POST(request: NextRequest) {
     }
 
     // First, create the time entry in Supabase
+    const now = new Date().toISOString()
     const { data: timeEntry, error: entryError } = await supabase
       .from('time_entries')
       .insert({
         user_id: user.id,
         category_id: category_id || null,
-        start_time: start_time || new Date().toISOString(),
+        start_time: start_time || now,
         end_time: end_time || null,
         activity_description: activity_description,
         ai_categorized: false,
-        confidence_score: null
+        confidence_score: null,
+        date: new Date().toISOString().split('T')[0], // Add required date field
+        description: activity_description // Add description field if required
       })
       .select()
       .single()
@@ -47,7 +50,12 @@ export async function POST(request: NextRequest) {
     if (entryError) {
       console.error('Error creating time entry:', entryError)
       return NextResponse.json(
-        { error: 'Failed to create time entry' },
+        { 
+          error: 'Failed to create time entry', 
+          details: entryError.message,
+          code: entryError.code,
+          hint: entryError.hint 
+        },
         { status: 500 }
       )
     }
