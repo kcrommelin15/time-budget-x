@@ -1,13 +1,21 @@
-interface CategorizationResult {
-  category: string
-  sub_category: string | null
-  confidence_score: number
+interface TimeEntry {
+  id: string
   activity_description: string
+  category: string | null
+  confidence_score: number | null
+  ai_categorized: boolean
+}
+
+interface CategorizationParams {
+  activity_description: string
+  category_id?: string | null
+  start_time?: string
+  end_time?: string | null
 }
 
 export class AICategorization {
-  static async categorizeActivity(activityDescription: string): Promise<CategorizationResult | null> {
-    console.log('🚀 Frontend: Calling AI categorization for:', activityDescription)
+  static async categorizeAndCreateEntry(params: CategorizationParams): Promise<TimeEntry | null> {
+    console.log('🚀 Frontend: Calling AI categorization and entry creation for:', params.activity_description)
     
     try {
       const response = await fetch('/api/activity-categorize', {
@@ -15,9 +23,7 @@ export class AICategorization {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          activity_description: activityDescription
-        })
+        body: JSON.stringify(params)
       })
 
       console.log('📥 Frontend: API response status:', response.status)
@@ -31,12 +37,13 @@ export class AICategorization {
       const result = await response.json()
       console.log('✅ Frontend: AI categorization result:', result)
       
-      if (result.success && result.categorization) {
+      if (result.success && result.entry) {
         return {
-          category: result.categorization.category,
-          sub_category: result.categorization.sub_category || null,
-          confidence_score: result.categorization.confidence_score || 0,
-          activity_description: result.categorization.activity_description
+          id: result.entry.id,
+          activity_description: result.entry.activity_description,
+          category: result.entry.category,
+          confidence_score: result.entry.confidence_score,
+          ai_categorized: result.entry.ai_categorized
         }
       }
 

@@ -6,7 +6,7 @@ export async function POST(request: NextRequest) {
   console.log('🚀 Activity categorization API called')
   
   try {
-    const { activity_description } = await request.json()
+    const { activity_description, category_id, start_time, end_time } = await request.json()
     console.log('📝 Activity description:', activity_description)
     
     if (!activity_description) {
@@ -29,10 +29,35 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // First, create the time entry in Supabase
+    const { data: timeEntry, error: entryError } = await supabase
+      .from('time_entries')
+      .insert({
+        user_id: user.id,
+        category_id: category_id || null,
+        start_time: start_time || new Date().toISOString(),
+        end_time: end_time || null,
+        activity_description: activity_description,
+        ai_categorized: false,
+        confidence_score: null
+      })
+      .select()
+      .single()
+
+    if (entryError) {
+      console.error('Error creating time entry:', entryError)
+      return NextResponse.json(
+        { error: 'Failed to create time entry' },
+        { status: 500 }
+      )
+    }
+
+    console.log('✅ Time entry created:', timeEntry.id)
+
     // Get user's categories for AI context
     const { data: categories, error: categoriesError } = await supabase
       .from('categories')
-      .select('name, sub_categories')
+      .select('id, name, sub_categories')
       .eq('user_id', user.id)
 
     if (categoriesError) {
@@ -43,12 +68,14 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Prepare payload for n8n webhook
+    // Prepare payload for n8n webhook - now includes entry_id for updating
     const n8nPayload = {
       user_id: user.id,
+      entry_id: timeEntry.id,
       activity_description: activity_description,
       timestamp: new Date().toISOString(),
       user_categories: categories?.map(cat => ({
+        id: cat.id,
         category: cat.name,
         sub_categories: cat.sub_categories || []
       })) || []
@@ -91,37 +118,49 @@ export async function POST(request: NextRequest) {
     const n8nResult = await n8nResponse.json()
     console.log('✅ n8n result:', JSON.stringify(n8nResult, null, 2))
     
-    // Check if n8n returned the expected AI categorization format
-    if (n8nResult.category && n8nResult.confidence_score !== undefined) {
-      // Expected n8n response format:
-      // {
-      //   "id": "entry-uuid",
-      //   "user_id": "user-uuid", 
-      //   "activity_description": "Working on quarterly report",
-      //   "category": "Work",
-      //   "sub_category": "Reports", 
-      //   "confidence_score": 0.85,
-      //   "timestamp": "2025-06-28T10:30:00Z"
-      // }
+    // n8n should have updated the time entry directly in Supabase
+    // Fetch the updated entry to confirm the categorization was applied
+    const { data: updatedEntry, error: fetchError } = await supabase
+      .from('time_entries')
+      .select(`
+        id, 
+        activity_description, 
+        confidence_score, 
+        ai_categorized,
+        categories (id, name)
+      `)
+      .eq('id', timeEntry.id)
+      .single()
 
+    if (fetchError) {
+      console.error('Error fetching updated entry:', fetchError)
+      return NextResponse.json(
+        { error: 'Failed to fetch updated entry' },
+        { status: 500 }
+      )
+    }
+
+    if (updatedEntry.ai_categorized) {
+      // Successfully categorized by n8n
       return NextResponse.json({
         success: true,
-        categorization: {
-          category: n8nResult.category,
-          sub_category: n8nResult.sub_category,
-          confidence_score: n8nResult.confidence_score,
-          activity_description: activity_description
-        },
-        entry_id: n8nResult.id
+        entry: {
+          id: updatedEntry.id,
+          activity_description: updatedEntry.activity_description,
+          category: updatedEntry.categories?.name,
+          confidence_score: updatedEntry.confidence_score,
+          ai_categorized: true
+        }
       })
     } else {
-      // n8n workflow is not configured properly yet
-      console.error('❌ n8n workflow not configured - received:', n8nResult)
+      // n8n workflow didn't update the entry properly
+      console.error('❌ n8n workflow did not update entry - entry still not AI categorized')
       return NextResponse.json({
-        error: 'n8n workflow not configured properly',
+        error: 'n8n workflow did not categorize entry',
         debug: {
-          received: n8nResult,
-          expected: 'Should return {category, sub_category, confidence_score, id}'
+          entry_created: timeEntry.id,
+          n8n_response: n8nResult,
+          expected: 'Entry should be updated with ai_categorized: true'
         }
       }, { status: 500 })
     }

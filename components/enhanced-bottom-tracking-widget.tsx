@@ -67,44 +67,44 @@ export default function EnhancedBottomTrackingWidget({
 
     setIsAICategorizing(true)
     try {
-      const result = await AICategorization.categorizeActivity(description)
+      // Create time entry and get AI categorization - this replaces the old flow
+      const result = await AICategorization.categorizeAndCreateEntry({
+        activity_description: description,
+        start_time: startTime?.toISOString() || new Date().toISOString(),
+        end_time: isTracking ? null : new Date().toISOString()
+      })
       
       if (result) {
         setAICategorizedResult({
-          category: result.category,
-          subCategory: result.sub_category,
-          confidence: result.confidence_score
+          category: result.category || 'Uncategorized',
+          subCategory: null,
+          confidence: result.confidence_score || 0
         })
 
-        // Find matching category in user's categories
-        const matchingCategory = categories.find(
-          cat => cat.name.toLowerCase() === result.category.toLowerCase()
-        )
-        
-        if (matchingCategory) {
-          setSelectedCategory(matchingCategory.id)
-          toast({
-            title: "Activity Categorized!",
-            description: `${result.category}${result.sub_category ? ` > ${result.sub_category}` : ''} (${Math.round(result.confidence_score * 100)}% confidence)`,
-          })
-        } else {
-          toast({
-            title: "Category Not Found",
-            description: `AI suggested "${result.category}" but you don't have this category. Please create it or select manually.`,
-            variant: "destructive"
-          })
-        }
+        toast({
+          title: "Activity Created & Categorized!",
+          description: `${result.category || 'Uncategorized'} (${Math.round((result.confidence_score || 0) * 100)}% confidence)`,
+        })
+
+        // Reset the UI since entry was created
+        setIsTracking(false)
+        setIsPaused(false)
+        setStartTime(null)
+        setElapsedTime(0)
+        setDescription("")
+        setSelectedCategory("")
+        setAICategorizedResult(null)
       } else {
         toast({
           title: "Categorization Failed",
-          description: "Could not categorize your activity. Please select a category manually.",
+          description: "Could not categorize your activity. Please try the manual flow.",
           variant: "destructive"
         })
       }
     } catch (error) {
       console.error('AI categorization error:', error)
       toast({
-        title: "Error",
+        title: "Error", 
         description: "Failed to categorize activity. Please try again.",
         variant: "destructive"
       })
@@ -116,50 +116,20 @@ export default function EnhancedBottomTrackingWidget({
   const startTracking = async () => {
     console.log('🚀 Start tracking called - selectedCategory:', selectedCategory, 'description:', description)
     
-    if (!selectedCategory && !description) {
-      toast({
-        title: "Missing Information",
-        description: "Please enter an activity description or select a category to start tracking.",
-        variant: "destructive"
-      })
-      return
-    }
-    
-    // If we have description but no category, try AI categorization first
-    if (description && !selectedCategory && !isAICategorizing) {
-      console.log('🤖 Attempting AI categorization before starting...')
-      await handleAICategorization()
-      
-      // Check if categorization was successful after a brief delay
-      setTimeout(() => {
-        if (selectedCategory) {
-          console.log('✅ AI categorization successful, starting tracking')
-          setStartTime(new Date())
-          setIsTracking(true)
-          setIsPaused(false)
-          setElapsedTime(0)
-        } else {
-          console.log('❌ AI categorization failed or no matching category found')
-          toast({
-            title: "Categorization Required",
-            description: "Please categorize your activity or select a category manually to start tracking.",
-            variant: "destructive"
-          })
-        }
-      }, 1000) // Give more time for the categorization to complete
-    } else if (selectedCategory) {
-      console.log('✅ Category already selected, starting tracking immediately')
-      setStartTime(new Date())
-      setIsTracking(true)
-      setIsPaused(false)
-      setElapsedTime(0)
-    } else {
+    if (!selectedCategory) {
       toast({
         title: "Category Required",
         description: "Please select a category or use AI categorization to start tracking.",
         variant: "destructive"
       })
+      return
     }
+    
+    console.log('✅ Category selected, starting tracking immediately')
+    setStartTime(new Date())
+    setIsTracking(true)
+    setIsPaused(false)
+    setElapsedTime(0)
   }
 
   const pauseTracking = () => {
