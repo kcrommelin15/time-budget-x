@@ -5,8 +5,8 @@ import { Play, Pause, Square, Briefcase, Edit3, Sparkles, Loader2 } from "lucide
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useCategoriesQuery } from "@/hooks/use-categories-query"
-import { AICategorization } from "@/lib/supabase/ai-categorization-service"
 import { useToast } from "@/hooks/use-toast"
+import { AICategorization } from "@/lib/supabase/ai-categorization-service"
 import type { User } from "@supabase/supabase-js"
 
 interface EnhancedBottomTrackingWidgetProps {
@@ -27,11 +27,8 @@ export default function EnhancedBottomTrackingWidget({
   const [selectedCategory, setSelectedCategory] = useState("")
   const [description, setDescription] = useState("")
   const [isAICategorizing, setIsAICategorizing] = useState(false)
-  const [aiCategorizedResult, setAICategorizedResult] = useState<{
-    category: string
-    subCategory: string | null
-    confidence: number
-  } | null>(null)
+  const [aiCategorizedResult, setAICategorizedResult] = useState<any>(null)
+  const [timeEntryId, setTimeEntryId] = useState<string | null>(null)
 
   // Use the React Query hook instead of the old hook
   const { categories, loading: categoriesLoading } = useCategoriesQuery(user)
@@ -62,74 +59,60 @@ export default function EnhancedBottomTrackingWidget({
     return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`
   }
 
-  const handleAICategorization = async () => {
-    if (!description.trim()) return
-
-    setIsAICategorizing(true)
-    try {
-      // Create time entry and get AI categorization - this replaces the old flow
-      const result = await AICategorization.categorizeAndCreateEntry({
-        activity_description: description,
-        start_time: startTime?.toISOString() || new Date().toISOString(),
-        end_time: isTracking ? null : new Date().toISOString()
-      })
-      
-      if (result) {
-        setAICategorizedResult({
-          category: result.category || 'Uncategorized',
-          subCategory: null,
-          confidence: result.confidence_score || 0
-        })
-
-        toast({
-          title: "Activity Created & Categorized!",
-          description: `${result.category || 'Uncategorized'} (${Math.round((result.confidence_score || 0) * 100)}% confidence)`,
-        })
-
-        // Reset the UI since entry was created
-        setIsTracking(false)
-        setIsPaused(false)
-        setStartTime(null)
-        setElapsedTime(0)
-        setDescription("")
-        setSelectedCategory("")
-        setAICategorizedResult(null)
-      } else {
-        toast({
-          title: "Categorization Failed",
-          description: "Could not categorize your activity. Please try the manual flow.",
-          variant: "destructive"
-        })
-      }
-    } catch (error) {
-      console.error('AI categorization error:', error)
-      toast({
-        title: "Error", 
-        description: "Failed to categorize activity. Please try again.",
-        variant: "destructive"
-      })
-    } finally {
-      setIsAICategorizing(false)
-    }
-  }
 
   const startTracking = async () => {
-    console.log('🚀 Start tracking called - selectedCategory:', selectedCategory, 'description:', description)
+    console.log('🚀 Start tracking called - description:', description)
     
-    if (!selectedCategory) {
+    if (!description.trim()) {
       toast({
-        title: "Category Required",
-        description: "Please select a category or use AI categorization to start tracking.",
+        title: "Activity Description Required",
+        description: "Please enter what you're working on to start tracking.",
         variant: "destructive"
       })
       return
     }
     
-    console.log('✅ Category selected, starting tracking immediately')
-    setStartTime(new Date())
+    // Start tracking immediately for better UX
+    const trackingStartTime = new Date()
+    setStartTime(trackingStartTime)
     setIsTracking(true)
     setIsPaused(false)
     setElapsedTime(0)
+    setIsAICategorizing(true)
+    setAICategorizedResult(null)
+    
+    // Trigger AI categorization immediately in the background
+    try {
+      const result = await AICategorization.categorizeAndCreateEntry({
+        activity_description: description,
+        start_time: trackingStartTime.toISOString()
+      })
+      
+      if (result) {
+        setTimeEntryId(result.id)
+        setAICategorizedResult({
+          category: result.category,
+          confidence: result.confidence_score || 0
+        })
+        
+        // Find and select the matching category
+        const matchingCategory = categories.find(cat => 
+          cat.name.toLowerCase() === result.category?.toLowerCase()
+        )
+        if (matchingCategory) {
+          setSelectedCategory(matchingCategory.id)
+        }
+      }
+    } catch (error) {
+      console.error('AI categorization failed:', error)
+      toast({
+        title: "AI Categorization Failed",
+        description: "Don't worry, you can still track your time manually.",
+        variant: "destructive"
+      })
+    } finally {
+      setIsAICategorizing(false)
+    }
   }
 
   const pauseTracking = () => {
@@ -154,26 +137,36 @@ export default function EnhancedBottomTrackingWidget({
 
       if (category) {
         try {
-          await onAddEntry({
-            categoryId: category.id,
-            categoryName: category.name,
-            categoryColor: category.color,
-            startTime: startTime.toTimeString().slice(0, 5),
-            endTime: endTime.toTimeString().slice(0, 5),
-            description: description || `${category.name} session`,
-            date: new Date().toISOString().split("T")[0],
-            // Add AI categorization metadata
-            confidenceScore: aiCategorizedResult?.confidence,
-            aiCategorized: !!aiCategorizedResult,
-            activityDescription: aiCategorizedResult ? description : undefined,
-            subcategory: aiCategorizedResult?.subCategory || undefined,
-            source: aiCategorizedResult ? "ai_categorized" : "manual",
-          })
+          // If we have a time entry ID from AI categorization, we need to update it
+          // Otherwise create a new entry
+          if (timeEntryId) {
+            // Update the existing entry with end time
+            // For now, we'll still use onAddEntry but this could be optimized
+            await onAddEntry({
+              categoryId: category.id,
+              categoryName: category.name,
+              categoryColor: category.color,
+              startTime: startTime.toTimeString().slice(0, 5),
+              endTime: endTime.toTimeString().slice(0, 5),
+              description: description || `${category.name} session`,
+              date: new Date().toISOString().split("T")[0],
+            })
+          } else {
+            await onAddEntry({
+              categoryId: category.id,
+              categoryName: category.name,
+              categoryColor: category.color,
+              startTime: startTime.toTimeString().slice(0, 5),
+              endTime: endTime.toTimeString().slice(0, 5),
+              description: description || `${category.name} session`,
+              date: new Date().toISOString().split("T")[0],
+            })
+          }
           
           toast({
             title: aiCategorizedResult ? "AI Categorized Entry Saved!" : "Entry Saved!",
             description: aiCategorizedResult 
-              ? `${category.name}${aiCategorizedResult.subCategory ? ` > ${aiCategorizedResult.subCategory}` : ''} (${Math.round(aiCategorizedResult.confidence * 100)}% confidence)`
+              ? `${category.name} (${Math.round(aiCategorizedResult.confidence * 100)}% confidence)`
               : `Saved to ${category.name}`,
           })
         } catch (error) {
@@ -195,6 +188,7 @@ export default function EnhancedBottomTrackingWidget({
     setDescription("")
     setSelectedCategory("")
     setAICategorizedResult(null)
+    setTimeEntryId(null)
   }
 
   // Only show category chips when we have real data (not loading and categories exist)
@@ -234,14 +228,29 @@ export default function EnhancedBottomTrackingWidget({
                 {formatTime(elapsedTime)}
               </div>
 
-              {/* Activity with prominent color */}
-              {selectedCat && (
+              {/* Activity with prominent color or AI loading */}
+              {isAICategorizing ? (
+                <div className="flex items-center gap-3 bg-black/30 rounded-2xl px-4 py-2 backdrop-blur-sm border border-white/20">
+                  <Loader2 className="w-6 h-6 text-white animate-spin" />
+                  <span className="font-bold text-lg text-white">AI Categorizing...</span>
+                </div>
+              ) : selectedCat ? (
                 <div className="flex items-center gap-3 bg-black/30 rounded-2xl px-4 py-2 backdrop-blur-sm border border-white/20">
                   <div
                     className="w-6 h-6 rounded-full border-2 border-white shadow-lg"
                     style={{ backgroundColor: selectedCat.color }}
                   ></div>
                   <span className="font-bold text-lg text-white">{selectedCat.name}</span>
+                  {aiCategorizedResult && (
+                    <div className="text-xs text-white/80 bg-white/20 rounded-full px-2 py-1">
+                      AI: {Math.round(aiCategorizedResult.confidence * 100)}%
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="flex items-center gap-3 bg-black/30 rounded-2xl px-4 py-2 backdrop-blur-sm border border-white/20">
+                  <Loader2 className="w-6 h-6 text-white animate-spin" />
+                  <span className="font-bold text-lg text-white">Waiting for AI...</span>
                 </div>
               )}
             </div>
@@ -391,14 +400,14 @@ export default function EnhancedBottomTrackingWidget({
         {/* Start Button */}
         <Button
           onClick={startTracking}
-          disabled={!selectedCategory && !description}
+          disabled={!description}
           className="w-full h-16 rounded-2xl bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white text-lg font-semibold shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <Play className="w-6 h-6 mr-3" />
           Start
         </Button>
 
-        {/* Text Input with AI Categorization - moved to bottom */}
+        {/* Text Input */}
         <div className="space-y-3">
           <div className="relative">
             <Input
@@ -415,28 +424,6 @@ export default function EnhancedBottomTrackingWidget({
               className="w-full h-14 rounded-2xl text-center text-lg border-gray-200 bg-gray-50 focus:border-blue-400 shadow-sm placeholder:text-gray-400"
             />
           </div>
-          
-          {/* AI Categorization Button */}
-          {description && !aiCategorizedResult && (
-            <Button
-              onClick={handleAICategorization}
-              disabled={isAICategorizing}
-              variant="outline"
-              className="w-full h-12 rounded-2xl border-purple-200 bg-purple-50 hover:bg-purple-100 text-purple-700 font-medium"
-            >
-              {isAICategorizing ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Categorizing...
-                </>
-              ) : (
-                <>
-                  <Sparkles className="w-4 h-4 mr-2" />
-                  Categorize with AI
-                </>
-              )}
-            </Button>
-          )}
 
           {/* AI Categorization Result */}
           {aiCategorizedResult && (
@@ -445,7 +432,6 @@ export default function EnhancedBottomTrackingWidget({
                 <span className="font-medium text-green-800">AI Categorized:</span>
                 <span className="text-green-700 ml-1">
                   {aiCategorizedResult.category}
-                  {aiCategorizedResult.subCategory && ` → ${aiCategorizedResult.subCategory}`}
                 </span>
                 <div className="text-xs text-green-600 mt-1">
                   {Math.round(aiCategorizedResult.confidence * 100)}% confidence
