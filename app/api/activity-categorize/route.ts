@@ -117,7 +117,8 @@ export async function POST(request: NextRequest) {
     const now = new Date()
     const dateString = now.toISOString().split('T')[0]
     const startTimeISO = start_time ? new Date(start_time).toISOString() : now.toISOString()
-    const endTimeISO = end_time ? formatTimeForDB(end_time, dateString) : null
+    // If end_time is required (NOT NULL), set it to start_time initially and update later
+    const endTimeISO = end_time ? formatTimeForDB(end_time, dateString) : startTimeISO
     
     // Prepare insert data matching TimeEntriesService exactly
     const insertData = {
@@ -127,7 +128,7 @@ export async function POST(request: NextRequest) {
       end_time: endTimeISO,
       description: activity_description || "AI categorized activity", // Match TimeEntriesService format
       date: dateString,
-      status: "in_progress", // Use confirmed like TimeEntriesService but in_progress since no end_time
+      status: "confirmed", // Use confirmed like TimeEntriesService since we have both start and end time
       subcategory: null,
       notes: null,
       source: "ai", // Mark as AI-initiated  
