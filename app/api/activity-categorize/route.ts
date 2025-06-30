@@ -119,47 +119,43 @@ export async function POST(request: NextRequest) {
     const startTimeISO = start_time ? new Date(start_time).toISOString() : now.toISOString()
     const endTimeISO = end_time ? formatTimeForDB(end_time, dateString) : null
     
-    console.log('📝 Creating time entry with:', {
+    // Prepare insert data matching TimeEntriesService exactly
+    const insertData = {
+      user_id: user.id,
+      category_id: finalCategoryId,
       start_time: startTimeISO,
       end_time: endTimeISO,
+      description: activity_description || "AI categorized activity", // Match TimeEntriesService format
       date: dateString,
-      activity_description,
-      finalCategoryId
+      status: "in_progress", // Use confirmed like TimeEntriesService but in_progress since no end_time
+      subcategory: null,
+      notes: null,
+      source: "ai", // Mark as AI-initiated  
+      approved: true,
+      confidence_score: null,
+      ai_categorized: false,
+      activity_description: activity_description,
+    }
+
+    console.log('📝 Creating time entry with exact data:', JSON.stringify(insertData, null, 2))
+    
+    // Log each field individually to identify null/undefined values
+    Object.entries(insertData).forEach(([key, value]) => {
+      if (value === null || value === undefined || value === '') {
+        console.log(`⚠️  Field '${key}' is: ${value}`)
+      }
     })
     
     const { data: timeEntry, error: entryError } = await supabase
       .from('time_entries')
-      .insert({
-        user_id: user.id,
-        category_id: finalCategoryId,
-        start_time: startTimeISO,
-        end_time: endTimeISO,
-        activity_description: activity_description,
-        ai_categorized: false,
-        confidence_score: null,
-        date: dateString,
-        description: activity_description || 'AI categorized activity',
-        status: 'in_progress', // Set status to in_progress since we don't have end time yet
-        source: 'ai', // Mark as AI-initiated
-        approved: true,
-        subcategory: null,
-        notes: null
-      })
+      .insert(insertData)
       .select()
       .single()
 
     if (entryError) {
       console.error('❌ Error creating time entry:', {
         error: entryError,
-        insertData: {
-          user_id: user.id,
-          category_id: finalCategoryId,
-          start_time: startTimeISO,
-          end_time: endTimeISO,
-          date: dateString,
-          description: activity_description || '',
-          activity_description: activity_description
-        }
+        actualInsertData: insertData
       })
       return NextResponse.json(
         { 

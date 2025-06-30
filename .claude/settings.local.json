@@ -16,7 +16,8 @@
       "Bash(curl:*)",
       "mcp__vercel__vercel-list-all-deployments",
       "mcp__supabase__execute_sql",
-      "Bash(git restore:*)"
+      "Bash(git restore:*)",
+      "mcp__vercel__vercel-find-project"
     ]
   },
   "enableAllProjectMcpServers": true,
