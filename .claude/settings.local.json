@@ -11,7 +11,12 @@
       "mcp__supabase__apply_migration",
       "mcp__vercel__vercel-list-projects",
       "mcp__vercel__vercel-create-environment-variables",
-      "mcp__vercel__vercel-get-environments"
+      "mcp__vercel__vercel-get-environments",
+      "Bash(git push:*)",
+      "Bash(curl:*)",
+      "mcp__vercel__vercel-list-all-deployments",
+      "mcp__supabase__execute_sql",
+      "Bash(git restore:*)"
     ]
   },
   "enableAllProjectMcpServers": true,
