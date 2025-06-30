@@ -5,6 +5,18 @@ import { cookies } from 'next/headers'
 export async function POST(request: NextRequest) {
   console.log('🚀 Activity categorization API called')
   
+  // Add CORS headers for API requests
+  const headers = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  }
+  
+  // Handle preflight requests
+  if (request.method === 'OPTIONS') {
+    return new Response(null, { status: 200, headers })
+  }
+  
   try {
     const { activity_description, category_id, start_time, end_time } = await request.json()
     console.log('📝 Activity description:', activity_description)
@@ -180,4 +192,15 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     )
   }
+}
+
+export async function OPTIONS(request: NextRequest) {
+  return new Response(null, {
+    status: 200,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    },
+  })
 }
