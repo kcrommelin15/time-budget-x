@@ -126,7 +126,7 @@ export default function EnhancedBottomTrackingWidget({
 
       // Don't auto-select the first category if no category is selected
       // Instead, require explicit categorization
-      if (!category) {
+      if (!category && !isAICategorizing) {
         toast({
           title: "No Category Selected",
           description: "Please select a category before stopping the timer.",
@@ -135,13 +135,38 @@ export default function EnhancedBottomTrackingWidget({
         return
       }
 
+      // If still categorizing, wait for it to complete
+      if (isAICategorizing) {
+        toast({
+          title: "AI Still Categorizing",
+          description: "Please wait for AI categorization to complete.",
+          variant: "default"
+        })
+        return
+      }
+
       if (category) {
         try {
-          // If we have a time entry ID from AI categorization, we need to update it
-          // Otherwise create a new entry
+          // If we have a time entry ID from AI categorization, update it
           if (timeEntryId) {
             // Update the existing entry with end time
-            // For now, we'll still use onAddEntry but this could be optimized
+            const response = await fetch(`/api/time-entries/${timeEntryId}`, {
+              method: 'PATCH',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                end_time: endTime.toTimeString().slice(0, 5),
+                category_id: category.id,
+                description: description || `${category.name} session`,
+              })
+            })
+
+            if (!response.ok) {
+              throw new Error('Failed to update time entry')
+            }
+
+            // Refresh the parent component's data
             await onAddEntry({
               categoryId: category.id,
               categoryName: category.name,
@@ -152,6 +177,7 @@ export default function EnhancedBottomTrackingWidget({
               date: new Date().toISOString().split("T")[0],
             })
           } else {
+            // Create a new entry if no AI categorization happened
             await onAddEntry({
               categoryId: category.id,
               categoryName: category.name,

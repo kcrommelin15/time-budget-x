@@ -2,6 +2,18 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { cookies } from 'next/headers'
 
+export async function OPTIONS(request: NextRequest) {
+  // Handle CORS preflight requests
+  return new Response(null, {
+    status: 200,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    }
+  })
+}
+
 export async function POST(request: NextRequest) {
   console.log('🚀 Activity categorization API called')
   
@@ -41,32 +53,79 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Helper function to format time for database (matches TimeEntriesService)
+    const formatTimeForDB = (timeString: string | null, dateString: string): string | null => {
+      if (!timeString) return null
+      // If it's already an ISO string, use it directly
+      if (timeString.includes('T')) {
+        return new Date(timeString).toISOString()
+      }
+      // Otherwise combine date and time
+      const fullTimestamp = `${dateString}T${timeString}:00`
+      return new Date(fullTimestamp).toISOString()
+    }
+
     // First, create the time entry in Supabase
-    const now = new Date().toISOString()
+    const now = new Date()
+    const dateString = now.toISOString().split('T')[0]
+    const startTimeISO = start_time ? new Date(start_time).toISOString() : now.toISOString()
+    const endTimeISO = end_time ? formatTimeForDB(end_time, dateString) : null
+    
+    console.log('📝 Creating time entry with:', {
+      start_time: startTimeISO,
+      end_time: endTimeISO,
+      date: dateString,
+      activity_description
+    })
+    
     const { data: timeEntry, error: entryError } = await supabase
       .from('time_entries')
       .insert({
         user_id: user.id,
         category_id: category_id || null,
-        start_time: start_time || now,
-        end_time: end_time || null,
+        start_time: startTimeISO,
+        end_time: endTimeISO,
         activity_description: activity_description,
         ai_categorized: false,
         confidence_score: null,
-        date: new Date().toISOString().split('T')[0], // Add required date field
-        description: activity_description // Add description field if required
+        date: dateString,
+        description: activity_description || '',
+        status: 'in_progress', // Set status to in_progress since we don't have end time yet
+        source: 'ai', // Mark as AI-initiated
+        approved: true,
+        subcategory: null,
+        notes: null
       })
       .select()
       .single()
 
     if (entryError) {
-      console.error('Error creating time entry:', entryError)
+      console.error('❌ Error creating time entry:', {
+        error: entryError,
+        insertData: {
+          user_id: user.id,
+          category_id: category_id || null,
+          start_time: startTimeISO,
+          end_time: endTimeISO,
+          date: dateString,
+          description: activity_description || '',
+          activity_description: activity_description
+        }
+      })
       return NextResponse.json(
         { 
           error: 'Failed to create time entry', 
           details: entryError.message,
           code: entryError.code,
-          hint: entryError.hint 
+          hint: entryError.hint,
+          debug: {
+            message: 'Check server logs for detailed insert data',
+            possibleCauses: [
+              'Missing required fields',
+              'Invalid timestamp format',
+              'Database constraint violation'
+            ]
+          }
         },
         { status: 500 }
       )
