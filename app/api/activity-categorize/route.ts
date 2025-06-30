@@ -53,6 +53,66 @@ export async function POST(request: NextRequest) {
       return new Date(fullTimestamp).toISOString()
     }
 
+    // Helper function to get or create an "AI Pending" category
+    const getOrCreateAIPendingCategory = async (userId: string) => {
+      try {
+        // First, try to find existing AI Pending category
+        const { data: existingCategory, error: findError } = await supabase
+          .from('categories')
+          .select('id')
+          .eq('user_id', userId)
+          .eq('name', 'AI Pending')
+          .single()
+
+        if (existingCategory && !findError) {
+          console.log('✅ Found existing AI Pending category:', existingCategory.id)
+          return existingCategory.id
+        }
+
+        console.log('📝 Creating new AI Pending category for user:', userId)
+        // If not found, create one
+        const { data: newCategory, error: createError } = await supabase
+          .from('categories')
+          .insert({
+            user_id: userId,
+            name: 'AI Pending',
+            color: '#9CA3AF', // Gray color for pending
+            description: 'Temporary category for AI-categorized activities',
+          })
+          .select('id')
+          .single()
+
+        if (createError) {
+          console.error('❌ Failed to create AI Pending category:', createError)
+          throw new Error(`Could not create default category: ${createError.message}`)
+        }
+
+        console.log('✅ Created AI Pending category:', newCategory.id)
+        return newCategory.id
+      } catch (error) {
+        console.error('❌ Error in getOrCreateAIPendingCategory:', error)
+        
+        // Fallback: try to get the first available category for this user
+        console.log('🔄 Attempting fallback: getting first available category')
+        const { data: fallbackCategories, error: fallbackError } = await supabase
+          .from('categories')
+          .select('id')
+          .eq('user_id', userId)
+          .limit(1)
+
+        if (fallbackCategories && fallbackCategories.length > 0) {
+          console.log('✅ Using fallback category:', fallbackCategories[0].id)
+          return fallbackCategories[0].id
+        }
+
+        console.error('❌ No categories available for user, cannot proceed')
+        throw new Error('No categories available and could not create AI Pending category')
+      }
+    }
+
+    // Get or create default category if none provided
+    const finalCategoryId = category_id || await getOrCreateAIPendingCategory(user.id)
+    
     // First, create the time entry in Supabase
     const now = new Date()
     const dateString = now.toISOString().split('T')[0]
@@ -66,43 +126,6 @@ export async function POST(request: NextRequest) {
       activity_description,
       finalCategoryId
     })
-    
-    // Helper function to get or create an "AI Pending" category
-    const getOrCreateAIPendingCategory = async (userId: string) => {
-      // First, try to find existing AI Pending category
-      const { data: existingCategory, error: findError } = await supabase
-        .from('categories')
-        .select('id')
-        .eq('user_id', userId)
-        .eq('name', 'AI Pending')
-        .single()
-
-      if (existingCategory && !findError) {
-        return existingCategory.id
-      }
-
-      // If not found, create one
-      const { data: newCategory, error: createError } = await supabase
-        .from('categories')
-        .insert({
-          user_id: userId,
-          name: 'AI Pending',
-          color: '#9CA3AF', // Gray color for pending
-          description: 'Temporary category for AI-categorized activities',
-        })
-        .select('id')
-        .single()
-
-      if (createError) {
-        console.error('Failed to create AI Pending category:', createError)
-        throw new Error('Could not create default category')
-      }
-
-      return newCategory.id
-    }
-
-    // Get or create default category if none provided
-    const finalCategoryId = category_id || await getOrCreateAIPendingCategory(user.id)
     
     const { data: timeEntry, error: entryError } = await supabase
       .from('time_entries')
@@ -130,7 +153,7 @@ export async function POST(request: NextRequest) {
         error: entryError,
         insertData: {
           user_id: user.id,
-          category_id: category_id || null,
+          category_id: finalCategoryId,
           start_time: startTimeISO,
           end_time: endTimeISO,
           date: dateString,
