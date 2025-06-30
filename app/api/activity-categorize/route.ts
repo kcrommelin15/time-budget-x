@@ -138,7 +138,7 @@ export async function POST(request: NextRequest) {
         ai_categorized: false,
         confidence_score: null,
         date: dateString,
-        description: activity_description || '',
+        description: activity_description || 'AI categorized activity',
         status: 'in_progress', // Set status to in_progress since we don't have end time yet
         source: 'ai', // Mark as AI-initiated
         approved: true,
